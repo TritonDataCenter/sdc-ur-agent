@@ -45,7 +45,7 @@ connection.addListener('ready', function (e) {
     if (!adminNIC) {
       throw new Error("Could not find 'admin-nic' in `bootparams` output.");
     }
-    exchange.publish('ur.startup.'+adminNIC, params);
+    exchange.publish('ur.startup.' + adminNIC, params);
   });
 });
 
