@@ -23,6 +23,7 @@ connection.addListener('ready', function () {
 
   queue.bind('amq.topic', 'ur.startup.#');
   queue.bind('amq.topic', 'ur.execute-reply.*.*');
+
   queue.subscribeJSON(function (m) {
     var rkParts = m._routingKey.split('.', 4);
     console.log("\"Head Node\" received message:");
