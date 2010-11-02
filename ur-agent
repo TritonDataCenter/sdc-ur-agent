@@ -1,0 +1,165 @@
+#!/usr/bin/env node
+
+execFile = require('child_process').execFile;
+
+amqp = require('amqp');
+fs   = require('fs');
+
+debug = true;
+
+var creds
+  = { host:     process.env['AMQP_HOST']      || 'localhost'
+    , port:     process.env['AMQP_PORT']      || 5672
+    , login:    process.env['AMQP_LOGIN']     || 'guest'
+    , password: process.env['AMQP_PASSWORD']  || 'guest'
+    , vhost:    process.env['AMQP_VHOST']     || '/'
+    };
+
+var connection = amqp.createConnection(creds);
+
+connection.addListener('error', function (e) {
+  sys.log('AMQP connection error: ' + e.message);
+});
+
+var adminNIC;
+var exchange;
+
+connection.addListener('ready', function (e) {
+  console.log("AMQP Ready");
+
+  var queue = connection.queue('ur.request');
+  queue.bind('amq.topic', 'ur.execute.#');
+  queue.subscribeJSON(onExecute);
+
+  exchange = connection.exchange('amq.topic', { type: 'topic' });
+
+  bootParams(function (error, exitStatus, stdout, stderr) {
+    if (error) {
+      console.log("bootparams error: " + stderr.toString());
+      console.dir(arguments);
+      return;
+    }
+
+    var params = parseBootParams(stdout);
+    adminNIC = params['admin-nic'];
+    if (!adminNIC) {
+      throw new Error("Could not find 'admin-nic' in `bootparams` output.");
+    }
+    exchange.publish('ur.startup.'+adminNIC, params);
+  });
+});
+
+connection.addListener('close', function (e) {
+  console.log("Connection close");
+});
+
+function onExecute (m) {
+  console.log("Received a message.");
+  var reqID = m._routingKey.split('.', 4)[3];
+  switch (m.type) {
+    case 'file':
+      executeFile
+        ( m.file
+        , m.env
+        , m.args
+        , function (exitStatus, stdout, stderr) {
+            publishExecuteReply(reqID, exitStatus, stdout, stderr);
+          });
+      break;
+  
+    case 'script':
+      executeScript
+        ( m.script
+        , m.env
+        , m.args
+        , function (exitStatus, stdout, stderr) {
+            publishExecuteReply(reqID, exitStatus, stdout, stderr);
+          });
+      break;
+  }
+}
+
+function executeFile(filename, env, args, callback) {
+  console.log("Executing file: " + filename);
+  execFile
+    ( filename
+    , args || []
+    , env ? { env: env } : {}
+    , function (error, stdout, stderr) {
+        if (error) {
+          callback(error.code, stdout.toString(), stderr.toString());
+          return;
+        }
+        callback(0, stdout.toString(), stderr.toString());
+      }
+    );
+}
+
+function executeScript(script, env, args, callback) {
+  console.log("Executing script: " + script);
+  var filename = tmpFilename();
+  console.log("Writing file " + filename);
+
+  fs.writeFile(filename, script, function () {
+    fs.chmod(filename, 0700, function () {
+      executeFile(filename, env, args, function () {
+        var execArgs = arguments;
+        fs.unlink(filename, function () {
+          callback.apply(undefined, execArgs);
+        });
+      });
+    });
+  });
+}
+
+function tmpFilename() {
+  return "/tmp/ur-" + genId();
+}
+
+function publishExecuteReply(reqID, exitStatus, stdout, stderr) {
+  console.log("Publishing execute-reply to request " + reqID + ".");
+  exchange.publish
+    ( 'ur.execute-reply.' + adminNIC + '.' + reqID
+    , { exit_status: exitStatus
+      , stdout:      stdout
+      , stderr:      stderr
+      }
+    );
+}
+
+function bootParams (callback) {
+  var paramsExecutable
+    = debug ? './bootparams-fake.sh' : '/usr/bin/bootparams';
+
+  execFile
+    ( paramsExecutable
+    , []
+    , function (exitStatus, stdout, stderr) {
+        if (exitStatus)
+          return callback(new Error(stderr), exitStatus, stdout, stderr);
+       
+        callback
+          ( undefined
+          , exitStatus
+          , stdout.toString().trim()
+          , stderr.toString().trim()
+          );
+        return;
+      }
+    );
+} 
+
+function parseBootParams (paramStr) {
+  var params = {};
+  paramStr.split("\n").forEach(function (pair) {
+    var idx = pair.indexOf('=');
+    params[pair.slice(0, idx++)] = pair.slice(idx);
+  });
+  return params;
+}
+
+function genId() {
+  return Math.floor(Math.random() * 0xffffffff).toString(16);
+};
+
+// vim:ft=javascript

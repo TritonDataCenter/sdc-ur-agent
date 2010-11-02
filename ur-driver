@@ -1,0 +1,56 @@
+#!/usr/bin/env node
+
+sys  = require('sys');
+amqp = require('amqp');
+
+var creds =
+  { host:     process.env['AMQP_HOST']      || 'localhost'
+  , port:     process.env['AMQP_PORT']      || 5672
+  , login:    process.env['AMQP_LOGIN']     || 'guest'
+  , password: process.env['AMQP_PASSWORD']  || 'guest'
+  , vhost:    process.env['AMQP_VHOST']     || '/'
+  };
+
+var connection = amqp.createConnection(creds);
+var exchange;
+
+connection.addListener('ready', function () {
+  exchange = connection.exchange('amq.topic', { type: 'topic' });
+  var queue = connection.queue('ur.'+Math.random());
+  queue.addListener("open", function () {
+    console.log("Ready to receive messages");
+  });
+
+  queue.bind('amq.topic', 'ur.startup.#');
+  queue.bind('amq.topic', 'ur.execute-reply.*.*');
+  queue.subscribeJSON(function (m) {
+    var rkParts = m._routingKey.split('.', 4);
+    console.log("\"Head Node\" received message:");
+    console.dir(m);
+
+    if (rkParts[1] === "startup") {
+      exchange.publish
+        ( 'ur.execute.' + rkParts[2] + '.' + genId()
+        , { type: 'file'
+          , file: './my-test-script.sh'
+          , args: []
+          , env: {}
+          }
+        );
+      exchange.publish
+        ( 'ur.execute.' + rkParts[2] + '.' + genId()
+        , { type:   'script'
+          , script: "#!/bin/bash\necho hello world\nexit 0"
+          , args: []
+          , env: {}
+          }
+        );
+    }
+  });
+});
+
+function genId() {
+  return Math.floor(Math.random() * 0xffffffff).toString(16);
+};
+
+// vim:ft=javascript

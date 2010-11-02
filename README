@@ -1,0 +1,45 @@
+# Communicating with Ur
+
+# Ur startup
+
+On start up, Ur will run a script. This script will grab some basic information such as what pools are available, if any.
+
+==> routing-key: ur.startup.<node-id>
+
+{ execute: "file"
+, file: "scripts/pools.sh"
+, timestamp: "2010-11-10T..."
+}
+
+# Commands
+
+Ur command routing keys should contain a unique token, {{request-id}}, so that
+when we reply back we can re-use this token to indentify which command this
+was a reply to.
+
+## Execute a file
+
+<== routing-key: ur.execute.<node-id>.<request-id>
+
+{ type: "file"
+, file: "scripts/pools.sh"
+, timestamp: "2010-11-10T..."
+}
+
+## Execute an arbitrary string
+
+<== routing-key: ur.execute.<node-id>.<request-id>
+
+{ type: "script"
+, script: "#!/bin/bash\necho hello world\nexit 0"
+, timestamp: "2010-11-10T..."
+}
+
+# Ur execution replies:
+
+==> routing-key: ur.execute-reply.<node-id>.<the-request-id>
+
+{ exit_status: 0
+, stdout: "hello world\n";
+, stderr: ""
+}
