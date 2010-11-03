@@ -15,24 +15,34 @@ var creds
     , vhost:    process.env['AMQP_VHOST']     || '/'
     };
 
+var adminNIC;
+var exchange;
+
 var connection = amqp.createConnection(creds);
 
 connection.addListener('error', function (e) {
   sys.log('AMQP connection error: ' + e.message);
 });
 
-var adminNIC;
-var exchange;
+connection.addListener('close', function (e) {
+  console.log("Connection close");
+});
 
+// Wait until connection is made.
 connection.addListener('ready', function (e) {
   console.log("AMQP Ready");
 
+  // Open queue to receive our messages on and then set a handler for
+  // 'execute' messages.
   var queue = connection.queue('ur.request');
   queue.bind('amq.topic', 'ur.execute.#');
   queue.subscribeJSON(onExecute);
 
+  // Open the exchange where we will publish outbound messages.
   exchange = connection.exchange('amq.topic', { type: 'topic' });
 
+  // Grab the boot params and publish a startup message indicating we've come
+  // online and are ready to receive requests.
   bootParams(function (error, exitStatus, stdout, stderr) {
     if (error) {
       console.log("bootparams error: " + stderr.toString());
@@ -41,6 +51,8 @@ connection.addListener('ready', function (e) {
     }
 
     var params = parseBootParams(stdout);
+
+    // Use the admin-nic param to uniquely identify this machine on AMQP.
     adminNIC = params['admin-nic'];
     if (!adminNIC) {
       throw new Error("Could not find 'admin-nic' in `bootparams` output.");
@@ -49,12 +61,9 @@ connection.addListener('ready', function (e) {
   });
 });
 
-connection.addListener('close', function (e) {
-  console.log("Connection close");
-});
-
 function onExecute (m) {
   console.log("Received a message.");
+  // Save the request id so we can reference it in the reply's routing key.
   var reqID = m._routingKey.split('.', 4)[3];
   switch (m.type) {
     case 'file':
@@ -79,6 +88,8 @@ function onExecute (m) {
   }
 }
 
+// Execute a file and then call callback with captured output and exit status
+// code.
 function executeFile(filename, env, args, callback) {
   console.log("Executing file: " + filename);
   execFile
@@ -95,11 +106,13 @@ function executeFile(filename, env, args, callback) {
     );
 }
 
+// Execute a script string.
 function executeScript(script, env, args, callback) {
   console.log("Executing script: " + script);
   var filename = tmpFilename();
   console.log("Writing file " + filename);
 
+  // Write file, 'chmod 700' it, run it, delete file.
   fs.writeFile(filename, script, function () {
     fs.chmod(filename, 0700, function () {
       executeFile(filename, env, args, function () {
@@ -112,10 +125,7 @@ function executeScript(script, env, args, callback) {
   });
 }
 
-function tmpFilename() {
-  return "/tmp/ur-" + genId();
-}
-
+// Publish an 'ur.execute-reply'-type message to AMQP.
 function publishExecuteReply(reqID, exitStatus, stdout, stderr) {
   console.log("Publishing execute-reply to request " + reqID + ".");
   exchange.publish
@@ -127,6 +137,13 @@ function publishExecuteReply(reqID, exitStatus, stdout, stderr) {
     );
 }
 
+// Quick and dirty generation of tmp filenames.
+function tmpFilename() {
+  return "/tmp/ur-" + genId();
+}
+
+// Run the bootparms script and return the captured stdout, stderr, and exit
+// status code.
 function bootParams (callback) {
   var paramsExecutable
     = debug ? './bootparams-fake.sh' : '/usr/bin/bootparams';
@@ -134,7 +151,7 @@ function bootParams (callback) {
   execFile
     ( paramsExecutable
     , []
-    , function (exitStatus, stdout, stderr) {
+    , function (exitCode, stdout, stderr) {
         if (exitStatus)
           return callback(new Error(stderr), exitStatus, stdout, stderr);
        
@@ -158,6 +175,7 @@ function parseBootParams (paramStr) {
   return params;
 }
 
+// Generate a hex representation of a random four byte string.
 function genId() {
   return Math.floor(Math.random() * 0xffffffff).toString(16);
 };
