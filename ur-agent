@@ -2,8 +2,9 @@
 
 execFile = require('child_process').execFile;
 
-amqp = require('amqp');
+amqp = require('./amqp');
 fs   = require('fs');
+sys  = require('sys');
 
 debug = true;
 
@@ -151,7 +152,7 @@ function bootParams (callback) {
   execFile
     ( paramsExecutable
     , []
-    , function (exitCode, stdout, stderr) {
+    , function (exitStatus, stdout, stderr) {
         if (exitStatus)
           return callback(new Error(stderr), exitStatus, stdout, stderr);
        
