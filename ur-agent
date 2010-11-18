@@ -6,7 +6,10 @@ amqp = require('./amqp');
 fs   = require('fs');
 sys  = require('sys');
 
-debug = true;
+debug = false;
+if (process.env['UR_DEBUG']) {
+  debug = true;
+}
 
 var creds
   = { host:     process.env['AMQP_HOST']      || 'localhost'
@@ -16,7 +19,7 @@ var creds
     , vhost:    process.env['AMQP_VHOST']     || '/'
     };
 
-var adminNIC;
+var nodeUUID;
 var exchange;
 
 var connection = amqp.createConnection(creds);
@@ -42,23 +45,24 @@ connection.addListener('ready', function (e) {
   // Open the exchange where we will publish outbound messages.
   exchange = connection.exchange('amq.topic', { type: 'topic' });
 
-  // Grab the boot params and publish a startup message indicating we've come
+  // Grab the sysinfo and publish a startup message indicating we've come
   // online and are ready to receive requests.
-  bootParams(function (error, exitStatus, stdout, stderr) {
+  loadSysinfo(function (error, exitStatus, stdout, stderr) {
     if (error) {
-      console.log("bootparams error: " + stderr.toString());
+      console.log("sysinfo error: " + stderr.toString());
       console.dir(arguments);
       return;
     }
 
-    var params = parseBootParams(stdout);
+    // output of sysinfo is a JSON object
+    var sysinfo = JSON.parse(stdout);
 
-    // Use the admin-nic param to uniquely identify this machine on AMQP.
-    adminNIC = params['admin-nic'];
-    if (!adminNIC) {
-      throw new Error("Could not find 'admin-nic' in `bootparams` output.");
+    // Use the UUID param to uniquely identify this machine on AMQP.
+    nodeUUID = sysinfo['UUID'];
+    if (!nodeUUID) {
+      throw new Error("Could not find 'UUID' in `sysinfo` output.");
     }
-    exchange.publish('ur.startup.' + adminNIC, params);
+    exchange.publish('ur.startup.' + nodeUUID, sysinfo);
   });
 });
 
@@ -130,7 +134,7 @@ function executeScript(script, env, args, callback) {
 function publishExecuteReply(reqID, exitStatus, stdout, stderr) {
   console.log("Publishing execute-reply to request " + reqID + ".");
   exchange.publish
-    ( 'ur.execute-reply.' + adminNIC + '.' + reqID
+    ( 'ur.execute-reply.' + nodeUUID + '.' + reqID
     , { exit_status: exitStatus
       , stdout:      stdout
       , stderr:      stderr
@@ -143,11 +147,11 @@ function tmpFilename() {
   return "/tmp/ur-" + genId();
 }
 
-// Run the bootparms script and return the captured stdout, stderr, and exit
+// Run the sysinfo script and return the captured stdout, stderr, and exit
 // status code.
-function bootParams (callback) {
+function loadSysinfo (callback) {
   var paramsExecutable
-    = debug ? './bootparams-fake.sh' : '/usr/bin/bootparams';
+    = debug ? './sysinfo-fake.sh' : '/usr/bin/sysinfo';
 
   execFile
     ( paramsExecutable
@@ -166,15 +170,6 @@ function bootParams (callback) {
       }
     );
 } 
-
-function parseBootParams (paramStr) {
-  var params = {};
-  paramStr.split("\n").forEach(function (pair) {
-    var idx = pair.indexOf('=');
-    params[pair.slice(0, idx++)] = pair.slice(idx);
-  });
-  return params;
-}
 
 // Generate a hex representation of a random four byte string.
 function genId() {

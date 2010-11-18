@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
+amqp = require('./amqp');
 sys  = require('sys');
-amqp = require('amqp');
 
 var creds =
   { host:     process.env['AMQP_HOST']      || 'localhost'
