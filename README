@@ -62,8 +62,8 @@ h4. Ur startup
 
 On start up, Ur will run a script. This script will grab some basic information such as what pools are available, if any.
 
-In these examples, <node-id> should be the admin NIC's mac address as obtained
-from the "/usr/bin/bootparams" script.
+In these examples, <node-id> should be the UUID of the machine as obtained
+from the "/usr/bin/sysinfo" script.
 
 ==> routing-key: ur.startup.<node-id>
 
