@@ -36,7 +36,6 @@ connection.addListener('close', function (e) {
 connection.addListener('ready', function (e) {
   console.log("AMQP Ready");
 
-
   // Grab the sysinfo and publish a startup message indicating we've come
   // online and are ready to receive requests.
   loadSysinfo(function (error, exitStatus, stdout, stderr) {
@@ -58,13 +57,14 @@ connection.addListener('ready', function (e) {
     // Open queue to receive our messages on and then set a handler for
     // 'execute' messages.
     var queue = connection.queue('ur.request.'+nodeUUID);
-    queue.bind('amq.topic', 'ur.execute.#');
-    queue.subscribeJSON(onExecute);
+    queue.bind('amq.topic', 'ur.execute.*.*');
+    queue.on('open', function () {
+      queue.subscribeJSON(onExecute);
 
-    // Open the exchange where we will publish outbound messages.
-    exchange = connection.exchange('amq.topic', { type: 'topic' });
-
-    exchange.publish('ur.startup.' + nodeUUID, sysinfo);
+      // Open the exchange where we will publish outbound messages.
+      exchange = connection.exchange('amq.topic', { type: 'topic' });
+      exchange.publish('ur.startup.' + nodeUUID, sysinfo);
+    });
   });
 });
 
