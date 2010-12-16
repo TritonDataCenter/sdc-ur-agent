@@ -23,17 +23,31 @@ var nodeUUID;
 var exchange;
 
 var connection = amqp.createConnection(creds);
+var reconnectionInterval;
 
-connection.addListener('error', function (e) {
+connection.on('error', function (e) {
   sys.log('AMQP connection error: ' + e.message);
 });
 
-connection.addListener('close', function (e) {
-  console.log("Connection close");
+connection.on('close', function (e) {
+  switch (connection.readyState) {
+    case 'opening':
+      if (reconnectionInterval || !e)
+        break;
+    case 'closed':
+      reconnectionInterval = setInterval(function () {
+        connection.reconnect(function (e) {
+          console.log("Reconnect...");
+        });
+      }, 5000);
+      break;
+  }
 });
 
 // Wait until connection is made.
-connection.addListener('ready', function (e) {
+connection.on('ready', function (e) {
+  reconnectionInterval && clearInterval(reconnectionInterval);
+  reconnectionInterval = undefined;
   console.log("AMQP Ready");
 
   // Grab the sysinfo and publish a startup message indicating we've come
