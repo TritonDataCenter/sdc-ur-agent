@@ -21,6 +21,7 @@ var creds
 
 var nodeUUID;
 var exchange;
+var queue;
 
 var connection = amqp.createConnection(creds);
 var reconnectionInterval;
@@ -70,10 +71,10 @@ connection.on('ready', function (e) {
 
     // Open queue to receive our messages on and then set a handler for
     // 'execute' messages.
-    var queue = connection.queue('ur.request.'+nodeUUID);
+    queue = connection.queue('ur.request.'+nodeUUID);
     queue.bind('amq.topic', 'ur.execute.*.*');
     queue.on('open', function () {
-      queue.subscribeJSON(onExecute);
+      queue.subscribeJSON({ ack: true }, onExecute);
 
       // Open the exchange where we will publish outbound messages.
       exchange = connection.exchange('amq.topic', { type: 'topic' });
@@ -86,15 +87,15 @@ function onExecute (m) {
   console.log("Received a message.");
   // Save the request id so we can reference it in the reply's routing key.
   var reqID = m._routingKey.split('.', 4)[3];
+
   switch (m.type) {
     case 'file':
       executeFile
         ( m.file
         , m.env
         , m.args
-        , function (exitStatus, stdout, stderr) {
-            publishExecuteReply(reqID, exitStatus, stdout, stderr);
-          });
+        , replyFn
+        );
       break;
   
     case 'script':
@@ -102,11 +103,50 @@ function onExecute (m) {
         ( m.script
         , m.env
         , m.args
-        , function (exitStatus, stdout, stderr) {
-            publishExecuteReply(reqID, exitStatus, stdout, stderr);
-          });
+        , replyFn
+        );
       break;
   }
+
+  function replyFn(exitStatus, stdout, stderr) {
+    // An exit status of 113 from the executable indicates that we want the
+    // machine to reboot after we reply.
+    publishExecuteReply
+      ( reqID
+      , exitStatus === 113 ? 0 : exitStatus
+      , stdout
+      , stderr
+      , function () {
+          // Reboot if the exit status code is 113. 113 or 1/13 is the 30th
+          // prime number and also an "Einstein Prime".
+          if (exitStatus !== 113) {
+            return queue.shift();
+          }
+
+          // Allow some time for node gnomes to carry our reply AMQP packets
+          // away before we reboot the machine.
+          setTimeout(function () {
+            connection.close();
+            (debug ? fakeReboot : reboot)();
+          }, 1000);
+        }
+      );
+  }
+}
+
+function reboot() {
+  execFile
+    ( '/usr/sbin/reboot'
+    , []
+    , function () {
+        // Stare into the abyss.
+      }
+    );
+}
+
+function fakeReboot() {
+  console.log("I am so rebooting right now.");
+  process.exit(0);
 }
 
 // Execute a file and then call callback with captured output and exit status
@@ -147,7 +187,7 @@ function executeScript(script, env, args, callback) {
 }
 
 // Publish an 'ur.execute-reply'-type message to AMQP.
-function publishExecuteReply(reqID, exitStatus, stdout, stderr) {
+function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
   console.log("Publishing execute-reply to request " + reqID + ".");
   exchange.publish
     ( 'ur.execute-reply.' + nodeUUID + '.' + reqID
@@ -156,6 +196,7 @@ function publishExecuteReply(reqID, exitStatus, stdout, stderr) {
       , stderr:      stderr
       }
     );
+  callback();
 }
 
 // Quick and dirty generation of tmp filenames.

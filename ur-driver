@@ -46,6 +46,17 @@ connection.addListener('ready', function () {
           , env: {}
           }
         );
+
+      setTimeout(function () {
+        exchange.publish
+          ( 'ur.execute.' + rkParts[2] + '.' + genId()
+          , { type:   'script'
+            , script: "#!/bin/bash\necho goodbye, cruel world\nexit 113"
+            , args: []
+            , env: {}
+            }
+          );
+      }, 2000);
     }
   });
 });
