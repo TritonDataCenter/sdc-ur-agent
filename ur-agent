@@ -72,7 +72,7 @@ connection.on('ready', function (e) {
     // Open queue to receive our messages on and then set a handler for
     // 'execute' messages.
     queue = connection.queue('ur.request.'+nodeUUID);
-    queue.bind('amq.topic', 'ur.execute.*.*');
+    queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
     queue.on('open', function () {
       queue.subscribeJSON({ ack: true }, onExecute);
 
