@@ -15,10 +15,10 @@ cat <<EOF
     "c2t0d0": {"Size in GB": 299}
   },
   "Network Interfaces": {
-    "igb3": {"MAC Address": "be:ef:be:ef:be:ef"},
-    "igb1": {"MAC Address": "01:23:45:67:89:ab", "Admin NIC": "true"},
-    "igb2": {"MAC Address": "de:ad:de:ad:de:ad"},
-    "igb0": {"MAC Address": "ba:db:ad:ba:db:ad"}
+    "igb3": {"MAC Address": "be:ef:be:ef:be:ef", "NIC Names": []},
+    "igb1": {"MAC Address": "01:23:45:67:89:ab", "NIC Names": ["admin"]},
+    "igb2": {"MAC Address": "de:ad:de:ad:de:ad", "NIC Names": []},
+    "igb0": {"MAC Address": "ba:db:ad:ba:db:ad", "NIC Names": []}
   }
 }
 EOF
