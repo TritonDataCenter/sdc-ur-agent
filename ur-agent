@@ -162,7 +162,15 @@ function executeFile(filename, env, args, callback) {
           callback(error.code, stdout.toString(), stderr.toString());
           return;
         }
-        callback(0, stdout.toString(), stderr.toString());
+        stdout = stdout.toString();
+        stderr = stderr.toString();
+
+        console.log("STDOUT:");
+        console.log(stdout);
+        console.log("STDERR:");
+        console.log(stderr);
+
+        callback(0, stdout, stderr);
       }
     );
 }
