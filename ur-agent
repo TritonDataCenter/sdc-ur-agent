@@ -77,8 +77,11 @@ connection.on('ready', function (e) {
       queue.subscribeJSON({ ack: true }, onExecute);
 
       // Open the exchange where we will publish outbound messages.
+      var routingKey = 'ur.startup.' + nodeUUID;
       exchange = connection.exchange('amq.topic', { type: 'topic' });
-      exchange.publish('ur.startup.' + nodeUUID, sysinfo);
+      console.log("Sending startup message to routing key " + routingKey);
+      console.dir(sysinfo);
+      exchange.publish(routingKey, sysinfo);
     });
   });
 });
@@ -165,6 +168,7 @@ function executeFile(filename, env, args, callback) {
         stdout = stdout.toString();
         stderr = stderr.toString();
 
+        console.log("Exit status for " + filename + " was " + (error ? error.code : 0));
         console.log("STDOUT:");
         console.log(stdout);
         console.log("STDERR:");
@@ -196,13 +200,17 @@ function executeScript(script, env, args, callback) {
 
 // Publish an 'ur.execute-reply'-type message to AMQP.
 function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
-  console.log("Publishing execute-reply to request " + reqID + ".");
+  var reply = { exit_status: exitStatus
+              , stdout:      stdout
+              , stderr:      stderr
+              };
+  var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
+  console.log("Publishing execute-reply to request " + reqID + ":");
+  console.dir(reply);
+
   exchange.publish
-    ( 'ur.execute-reply.' + nodeUUID + '.' + reqID
-    , { exit_status: exitStatus
-      , stdout:      stdout
-      , stderr:      stderr
-      }
+    ( routingKey
+    , reply
     );
   callback();
 }
