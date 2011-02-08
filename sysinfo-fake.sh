@@ -2,6 +2,7 @@
 
 cat <<EOF
 {
+  "Live Image": "20110207T205331Z",
   "Manufacturer": "Dell",
   "Product": "PowerEdge C2100",
   "Serial Number": "000ABC1",
@@ -13,6 +14,10 @@ cat <<EOF
   "Disks": {
     "c2t1d0": {"Size in GB": 2394},
     "c2t0d0": {"Size in GB": 299}
+  },
+  "Boot Parameters": {
+    "console": "text",
+    "headnode": "true"
   },
   "Network Interfaces": {
     "igb3": {"MAC Address": "be:ef:be:ef:be:ef", "NIC Names": []},
