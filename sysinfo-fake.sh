@@ -2,7 +2,7 @@
 
 cat <<EOF
 {
-  "Live Image": "20110207T205332Z",
+  "Live Image": "20110207T205333Z",
   "Manufacturer": "Dell",
   "Product": "PowerEdge C2100",
   "Serial Number": "000ABC1",
