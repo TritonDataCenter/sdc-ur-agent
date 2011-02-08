@@ -87,7 +87,8 @@ connection.on('ready', function (e) {
 });
 
 function onExecute (m) {
-  console.log("Received a message.");
+  console.log("Received a message to routing key: " + m._routingKey);
+  console.dir(m);
   // Save the request id so we can reference it in the reply's routing key.
   var reqID = m._routingKey.split('.', 4)[3];
 
