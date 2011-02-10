@@ -56,7 +56,7 @@ connection.on('ready', function (e) {
   loadSysinfo(function (error, exitStatus, stdout, stderr) {
     if (error) {
       console.log("sysinfo error: " + stderr.toString());
-      console.dir(arguments);
+      dump(arguments);
       return;
     }
 
@@ -80,7 +80,7 @@ connection.on('ready', function (e) {
       var routingKey = 'ur.startup.' + nodeUUID;
       exchange = connection.exchange('amq.topic', { type: 'topic' });
       console.log("Sending startup message to routing key " + routingKey);
-      console.dir(sysinfo);
+      dump(sysinfo);
       exchange.publish(routingKey, sysinfo);
     });
   });
@@ -88,7 +88,7 @@ connection.on('ready', function (e) {
 
 function onExecute (m) {
   console.log("Received a message to routing key: " + m._routingKey);
-  console.dir(m);
+  dump(m);
   // Save the request id so we can reference it in the reply's routing key.
   var reqID = m._routingKey.split('.', 4)[3];
 
@@ -207,7 +207,7 @@ function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
               };
   var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
   console.log("Publishing execute-reply to request " + reqID + ":");
-  console.dir(reply);
+  dump(reply);
 
   exchange.publish
     ( routingKey
@@ -249,5 +249,9 @@ function loadSysinfo (callback) {
 function genId() {
   return Math.floor(Math.random() * 0xffffffff).toString(16);
 };
+
+function dump(obj, depth) {
+  console.log(sys.inspect(obj, true, depth ? depth : 20));    
+}
 
 // vim:ft=javascript
