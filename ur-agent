@@ -130,7 +130,7 @@ function onExecute (m) {
           // Allow some time for node gnomes to carry our reply AMQP packets
           // away before we reboot the machine.
           setTimeout(function () {
-            connection.close();
+            connection.end();
             (debug ? fakeReboot : reboot)();
           }, 1000);
         }
