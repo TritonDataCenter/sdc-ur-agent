@@ -2,7 +2,7 @@
 # Copyright (c) 2010,2011 Joyent Inc., All rights reserved.
 #
 
-DESTROOT=$(DESTDIR)/joyent/ur-agent
+DESTROOT=$(DESTDIR)/smartdc/ur-agent
 ROOT=$(PWD)
 
 all: submodules update
