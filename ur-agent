@@ -73,6 +73,7 @@ connection.on('ready', function (e) {
     // 'execute' messages.
     queue = connection.queue('ur.request.'+nodeUUID);
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
+    queue.bind('amq.topic', 'ur.broadcast.*.*');
     queue.on('open', function () {
       queue.subscribeJSON({ ack: true }, onExecute);
 
@@ -89,8 +90,29 @@ connection.on('ready', function (e) {
 function onExecute (m) {
   console.log("Received a message to routing key: " + m._routingKey);
   dump(m);
+  queue.shift();
+
   // Save the request id so we can reference it in the reply's routing key.
-  var reqID = m._routingKey.split('.', 4)[3];
+  var key = m._routingKey.split('.', 4);
+  var reqID = key[3];
+
+  if (key[1] == 'broadcast') {
+    switch (key[2]) {
+      case 'sysinfo': {
+        loadSysinfo(function (error, exitStatus, stdout, stderr) {
+          if (error) {
+            console.log("broadcast sysinfo error: " + stderr.toString());
+            return;
+          }
+          publishBroadcastReply(reqID, JSON.parse(stdout));
+        });
+        return;
+      }
+    }
+
+    console.log("unknown broadcast key '" + key[2] + "'");
+    return;
+  }
 
   switch (m.type) {
     case 'file':
@@ -124,7 +146,7 @@ function onExecute (m) {
           // Reboot if the exit status code is 113. 113 or 1/13 is the 30th
           // prime number and also an "Einstein Prime".
           if (exitStatus !== 113) {
-            return queue.shift();
+            return;
           }
 
           // Allow some time for node gnomes to carry our reply AMQP packets
@@ -214,6 +236,17 @@ function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
     , reply
     );
   callback();
+}
+
+function publishBroadcastReply(reqID, reply) {
+  var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
+  console.log("Publishing execute-reply to broadcast request " + reqID + ":");
+  dump(reply);
+
+  exchange.publish
+    ( routingKey
+    , reply
+    );
 }
 
 // Quick and dirty generation of tmp filenames.
