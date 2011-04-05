@@ -16,18 +16,18 @@ update:
 install:
 	rm -rf $(DESTROOT)
 	mkdir -p $(DESTROOT)/amqp/util
-	/usr/sbin/install -m 0555 -f $(DESTROOT) $(ROOT)/ur-agent
-	/usr/sbin/install -m 0444 -f $(DESTROOT) $(ROOT)/README
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/LICENSE-MIT
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/amqp-0.8.xml
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/README.md
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/package.json
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/qparser.rb
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/amqp-definitions-0-8.js
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/promise.js
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-exchange.js
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-queue.js
-	/usr/sbin/install -m 0444 -f $(DESTROOT)/amqp $(ROOT)/amqp/amqp.js
+	/usr/bin/install -m 0555 -t $(DESTROOT) $(ROOT)/ur-agent
+	/usr/bin/install -m 0444 -t $(DESTROOT) $(ROOT)/README
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/LICENSE-MIT
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/amqp-0.8.xml
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/README.md
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/package.json
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/qparser.rb
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/amqp-definitions-0-8.js
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/promise.js
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-exchange.js
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-queue.js
+	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/amqp.js
 
 clean:
 	/bin/true
