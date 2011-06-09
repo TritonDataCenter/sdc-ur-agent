@@ -4,6 +4,15 @@
 
 DESTROOT=$(DESTDIR)/smartdc/ur-agent
 ROOT=$(PWD)
+UNAME=$(shell uname -s)
+
+ifeq ($(UNAME),Linux)
+    INSTALL=/usr/bin/install
+    INSTALL_FLAG=-t
+else
+    INSTALL=/usr/sbin/install
+    INSTALL_FLAG=-f
+endif
 
 all: submodules update
 
@@ -16,18 +25,18 @@ update:
 install:
 	rm -rf $(DESTROOT)
 	mkdir -p $(DESTROOT)/amqp/util
-	/usr/bin/install -m 0555 -t $(DESTROOT) $(ROOT)/ur-agent
-	/usr/bin/install -m 0444 -t $(DESTROOT) $(ROOT)/README
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/LICENSE-MIT
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/amqp-0.8.xml
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/README.md
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/package.json
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/qparser.rb
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/amqp-definitions-0-8.js
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/promise.js
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-exchange.js
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-queue.js
-	/usr/bin/install -m 0444 -t $(DESTROOT)/amqp $(ROOT)/amqp/amqp.js
+	$(INSTALL) -m 0555 $(INSTALL_FLAG) $(DESTROOT) $(ROOT)/ur-agent
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT) $(ROOT)/README
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/LICENSE-MIT
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp-0.8.xml
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/README.md
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/package.json
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/qparser.rb
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp-definitions-0-8.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/promise.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-exchange.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-queue.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp.js
 
 clean:
 	/bin/true
