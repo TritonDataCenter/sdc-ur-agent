@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-execFile = require('child_process').execFile;
-
-amqp = require('./amqp');
-fs   = require('fs');
-sys  = require('sys');
+var execFile = require('child_process').execFile
+  , amqp = require('./amqp')
+  , fs   = require('fs')
+  , sys  = require('sys')
+  , path = require('path')
 
 debug = false;
 if (process.env['UR_DEBUG']) {
@@ -69,6 +69,9 @@ connection.on('ready', function (e) {
       throw new Error("Could not find 'UUID' in `sysinfo` output.");
     }
 
+    // Open the exchange where we will publish outbound messages.
+    exchange = connection.exchange('amq.topic', { type: 'topic' });
+
     // Open queue to receive our messages on and then set a handler for
     // 'execute' messages.
     queue = connection.queue('ur.request.'+nodeUUID);
@@ -77,12 +80,20 @@ connection.on('ready', function (e) {
     queue.on('open', function () {
       queue.subscribeJSON({ ack: true }, onExecute);
 
-      // Open the exchange where we will publish outbound messages.
-      var routingKey = 'ur.startup.' + nodeUUID;
-      exchange = connection.exchange('amq.topic', { type: 'topic' });
-      console.log("Sending startup message to routing key " + routingKey);
-      dump(sysinfo);
-      exchange.publish(routingKey, sysinfo);
+      var urStartupFilePath = '/tmp/.ur-startup';
+      path.exists(urStartupFilePath, function (exists) {
+        if (!exists) {
+          fs.writeFile(urStartupFilePath, "", function (error) {
+            if (error)
+              throw error;
+
+            var routingKey = 'ur.startup.' + nodeUUID;
+            console.log("Sending startup message to routing key " + routingKey);
+            dump(sysinfo);
+            exchange.publish(routingKey, sysinfo);
+          });
+        }
+      });
     });
   });
 });
