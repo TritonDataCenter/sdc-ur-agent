@@ -107,10 +107,8 @@ function bindQueue () {
     exchange.publish(pjoin("ur.execute.", nodeUUID, genId()), {});
 
     setTimeout(function () {
+      connection.end();
       connect();
-      setTimeout(function () {
-        bindQueue();
-      }, 2000);
     }, 5000);
   });
 
