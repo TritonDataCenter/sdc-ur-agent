@@ -22,6 +22,7 @@ var creds
 var nodeUUID;
 var exchange;
 var queue;
+var sysinfo;
 
 var connection = amqp.createConnection(creds);
 var reconnectionInterval;
@@ -51,7 +52,7 @@ function connect () {
       }
 
       // output of sysinfo is a JSON object
-      var sysinfo = JSON.parse(stdout);
+      sysinfo = JSON.parse(stdout);
 
       // Use the UUID param to uniquely identify this machine on AMQP.
       nodeUUID = sysinfo['UUID'];
