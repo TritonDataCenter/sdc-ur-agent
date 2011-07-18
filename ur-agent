@@ -24,7 +24,7 @@ var exchange;
 var queue;
 var sysinfo;
 
-var connection = amqp.createConnection(creds);
+var connection;
 var reconnectionInterval;
 
 var reconnectAttempts = 0;
