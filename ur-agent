@@ -211,10 +211,26 @@ function onExecute (m) {
 
 function reboot() {
   execFile
+    ( '/usr/sbin/shutdown'
+    , ['-y', '-g', '0', '-i', '6']
+    , function (error, stdout, stderr) {
+        if (error) {
+          throw new Error(stderr.toString());
+        }
+        setTimeout(function () {
+          forceReboot();
+        }, 
+        5*60*1000);
+      }
+    );
+}
+
+function forceReboot () {
+  execFile
     ( '/usr/sbin/reboot'
     , []
     , function () {
-        // Stare into the abyss.
+        // Wait for reboot
       }
     );
 }
