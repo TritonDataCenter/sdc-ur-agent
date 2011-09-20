@@ -14,7 +14,7 @@ else
     INSTALL_FLAG=-f
 endif
 
-all: submodules update
+world: submodules
 
 submodules:
 	git submodule update --init
