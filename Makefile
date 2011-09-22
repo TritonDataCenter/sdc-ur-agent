@@ -22,6 +22,9 @@ submodules:
 update:
 	(git pull --rebase && git submodule update)
 
+manifest:
+	cp manifest $(DESTDIR)/$(DESTNAME)
+
 install:
 	rm -rf $(DESTROOT)
 	mkdir -p $(DESTROOT)/amqp/util
@@ -40,3 +43,5 @@ install:
 
 clean:
 	/bin/true
+
+.PHONY: manifest 

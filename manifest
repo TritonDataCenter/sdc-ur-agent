@@ -1,0 +1,14 @@
+d smartdc 0555 root bin
+d smartdc/ur-agent 0755 root bin
+f smartdc/ur-agent/README 0444 root bin
+d smartdc/ur-agent/amqp 0755 root bin
+f smartdc/ur-agent/amqp/LICENSE-MIT 0444 root bin
+f smartdc/ur-agent/amqp/README.md 0444 root bin
+f smartdc/ur-agent/amqp/amqp-0.8.xml 0444 root bin
+f smartdc/ur-agent/amqp/amqp-definitions-0-8.js 0444 root bin
+f smartdc/ur-agent/amqp/amqp.js 0444 root bin
+s smartdc/ur-agent/amqp/index.js=amqp.js
+f smartdc/ur-agent/amqp/package.json 0444 root bin
+f smartdc/ur-agent/amqp/promise.js 0444 root bin
+f smartdc/ur-agent/amqp/qparser.rb 0444 root bin
+f smartdc/ur-agent/ur-agent 0555 root bin
