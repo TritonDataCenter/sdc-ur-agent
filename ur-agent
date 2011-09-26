@@ -23,6 +23,7 @@ var nodeUUID;
 var exchange;
 var queue;
 var sysinfo;
+var connected;
 
 var connection;
 var reconnectionInterval;
@@ -38,9 +39,19 @@ function connect () {
 
   // Wait until connection is made.
   connection.on('ready', function (e) {
+    connected = true;
     reconnectionInterval && clearInterval(reconnectionInterval);
     reconnectionInterval = undefined;
     console.log("AMQP Ready");
+
+    var nopMsgInterval = setInterval(publishNOP, 30000);
+    function publishNOP() {
+      if (!connected) {
+        clearInterval(nopMsgInterval);
+        return;
+      }
+      exchange.publish('ur._nop.' + nodeUUID, {});
+    }
 
     // Grab the sysinfo and publish a startup message indicating we've come
     // online and are ready to receive requests.
@@ -72,6 +83,7 @@ function connect () {
   });
 
   connection.on('close', function (e) {
+    connected = false;
     switch (connection.readyState) {
       case 'opening':
         if (reconnectionInterval || !e)
