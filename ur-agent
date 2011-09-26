@@ -40,9 +40,19 @@ function connect () {
 
   // Wait until connection is made.
   connection.on('ready', function (e) {
+    connected = true;
     reconnectionInterval && clearInterval(reconnectionInterval);
     reconnectionInterval = undefined;
     console.log("AMQP Ready");
+
+    var nopMsgInterval = setInterval(publishNOP, 30000);
+    function publishNOP() {
+      if (!connected) {
+        clearInterval(nopMsgInterval);
+        return;
+      }
+      exchange.publish('ur._nop.' + nodeUUID, {});
+    }
 
     // Grab the sysinfo and publish a startup message indicating we've come
     // online and are ready to receive requests.
@@ -75,6 +85,7 @@ function connect () {
   });
 
   connection.on('close', function (e) {
+    connected = false;
     switch (connection.readyState) {
       case 'opening':
         if (reconnectionInterval || !e)
@@ -107,7 +118,7 @@ function firstAdminMac () {
 
 function bindQueue () {
   queue = connection.queue('ur.request.'+nodeUUID+'.'+adminMac, { exclusive: true });
-  
+
   queue.on('error', function (e) {
     var AMQP_RESOURCE_LOCKED = 405;
 
@@ -192,7 +203,7 @@ function onExecute (m) {
         , replyFn
         );
       break;
-  
+
     case 'script':
       executeScript
         ( m.script
@@ -239,7 +250,7 @@ function reboot() {
         }
         setTimeout(function () {
           forceReboot();
-        }, 
+        },
         5*60*1000);
       }
     );
@@ -351,7 +362,7 @@ function loadSysinfo (callback) {
     , function (exitStatus, stdout, stderr) {
         if (exitStatus)
           return callback(new Error(stderr), exitStatus, stdout, stderr);
-       
+
         callback
           ( undefined
           , exitStatus
@@ -361,7 +372,7 @@ function loadSysinfo (callback) {
         return;
       }
     );
-} 
+}
 
 // Generate a hex representation of a random four byte string.
 function genId() {
@@ -369,7 +380,7 @@ function genId() {
 };
 
 function dump(obj, depth) {
-  console.log(sys.inspect(obj, true, depth ? depth : 20));    
+  console.log(sys.inspect(obj, true, depth ? depth : 20));
 }
 
 function pjoin () {
