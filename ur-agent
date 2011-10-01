@@ -24,6 +24,7 @@ var exchange;
 var queue;
 var sysinfo;
 var connected;
+var adminMac;
 
 var connection;
 var reconnectionInterval;
@@ -74,6 +75,7 @@ function connect () {
       // Open the exchange where we will publish outbound messages.
       exchange = connection.exchange('amq.topic', { type: 'topic' });
 
+      adminMac = firstAdminMac();
       bindQueue();
     });
   });
@@ -97,8 +99,25 @@ function connect () {
   });
 }
 
+function firstAdminMac () {
+  var interfaces = sysinfo["Network Interfaces"];
+  var mac;
+  for (interface in interfaces) {
+    if (!interfaces.hasOwnProperty(interface)) continue;
+
+    var nic = interfaces[interface]["NIC Names"];
+    var isAdmin = nic.indexOf('admin') !== -1;
+    if (isAdmin) {
+      mac = interfaces[interface]['MAC Address'];
+      return mac;
+    }
+  }
+
+  throw "No NICs with name 'admin' detected.";
+}
+
 function bindQueue () {
-  queue = connection.queue('ur.request.'+nodeUUID, { exclusive: true });
+  queue = connection.queue('ur.request.'+nodeUUID+'.'+adminMac, { exclusive: true });
   
   queue.on('error', function (e) {
     var AMQP_RESOURCE_LOCKED = 405;
@@ -116,7 +135,7 @@ function bindQueue () {
 
     console.log("Detected another client our the Ur queue (Attempt: "
                 + [reconnectAttempts, maxReconnectAttempts].join('/') + ")");
-    exchange.publish(pjoin("ur.execute.", nodeUUID, genId()), {});
+    exchange.publish(pjoin("ur.execute", nodeUUID, genId()), {});
 
     setTimeout(function () {
       connection.end();
