@@ -34,6 +34,41 @@ var maxReconnectAttempts = 3;
 
 connect();
 
+function setupPingQueue () {
+  var resource = 'ur';
+  var queueName = resource + '.ping.' + nodeUUID;
+  var pq = connection.queue(queueName);
+
+  pq.addListener('open', function (messageCount, consumerCount) {
+    pq.subscribeJSON({ ack: true }, function (msg) {
+      sys.log("Received ping message");
+      var client_id = msg.client_id;
+      var id = msg.id;
+
+      var msg = { req_id: id
+                , timestamp: new Date().toISOString()
+                };
+      var routingKey
+        = resource
+          + '.ack'
+          + client_id
+          + '.'
+          + nodeUUID;
+
+
+      sys.log("Publishing ping reply to " + routingKey);
+      exchange.publish(routingKey, msg);
+
+      pq.shift();
+    });
+  });
+
+  pq.bind
+    ( 'amq.topic'
+    , resource + '.ping.' + nodeUUID
+    );
+}
+
 function connect () {
   if (connecting || connected) {
     sys.log("Was going to connect, but noticed we are connecting or already connected.");
@@ -154,6 +189,7 @@ function bindQueue () {
 
   queue.on('open', function () {
     reconnectAttempts = 0;
+    setupPingQueue();
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '-' + adminMac + '.*');
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
     queue.bind('amq.topic', 'ur.broadcast.*.*');
