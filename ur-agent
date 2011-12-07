@@ -34,6 +34,41 @@ var maxReconnectAttempts = 3;
 
 connect();
 
+function setupPingQueue () {
+  var resource = 'ur';
+  var queueName = resource + '.ping.' + nodeUUID;
+  var pq = connection.queue(queueName);
+
+  pq.addListener('open', function (messageCount, consumerCount) {
+    pq.subscribeJSON({ ack: true }, function (msg) {
+      sys.log("Received ping message");
+      var client_id = msg.client_id;
+      var id = msg.id;
+
+      var msg = { req_id: id
+                , timestamp: new Date().toISOString()
+                };
+      var routingKey
+        = resource
+          + '.ack'
+          + client_id
+          + '.'
+          + nodeUUID;
+
+
+      sys.log("Publishing ping reply to " + routingKey);
+      exchange.publish(routingKey, msg);
+
+      pq.shift();
+    });
+  });
+
+  pq.bind
+    ( 'amq.topic'
+    , resource + '.ping.' + nodeUUID
+    );
+}
+
 function connect () {
   console.log("Connecting");
   connection = amqp.createConnection(creds);
@@ -145,6 +180,7 @@ function bindQueue () {
 
   queue.on('open', function () {
     reconnectAttempts = 0;
+    setupPingQueue();
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
     queue.bind('amq.topic', 'ur.broadcast.*.*');
     queue.subscribeJSON({ ack: true }, onExecute);
