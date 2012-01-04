@@ -23,7 +23,7 @@ var nodeUUID;
 var exchange;
 var queue;
 var sysinfo;
-var connected;
+var connecting, connected;
 var adminMac;
 
 var connection;
@@ -70,11 +70,18 @@ function setupPingQueue () {
 }
 
 function connect () {
+  if (connecting || connected) {
+    sys.log("Was going to connect, but noticed we are connecting or already connected.");
+    return;
+  }
+  connecting = true;
   console.log("Connecting");
+
   connection = amqp.createConnection(creds);
 
   // Wait until connection is made.
   connection.on('ready', function (e) {
+    connecting = false;
     connected = true;
     reconnectionInterval && clearInterval(reconnectionInterval);
     reconnectionInterval = undefined;
@@ -116,10 +123,12 @@ function connect () {
   });
 
   connection.on('error', function (e) {
+    connecting = false;
     sys.log('AMQP connection error: ' + e.message);
   });
 
   connection.on('close', function (e) {
+    connecting = false;
     connected = false;
     switch (connection.readyState) {
       case 'opening':
