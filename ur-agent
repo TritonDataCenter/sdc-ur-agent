@@ -154,6 +154,7 @@ function bindQueue () {
 
   queue.on('open', function () {
     reconnectAttempts = 0;
+    queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '-' + adminMac + '.*');
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
     queue.bind('amq.topic', 'ur.broadcast.*.*');
     queue.subscribeJSON({ ack: true }, onExecute);
