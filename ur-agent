@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 var execFile = require('child_process').execFile
-  , amqp = require('./amqp')
+  , amqp = require('amqp')
   , fs   = require('fs')
-  , sys  = require('sys')
+  , sys  = require('util')
   , path = require('path')
 
 debug = false;
