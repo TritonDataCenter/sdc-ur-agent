@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-var execFile = require('child_process').execFile
-  , amqp = require('amqp')
-  , fs   = require('fs')
-  , sys  = require('util')
-  , path = require('path')
+var execFile = require('child_process').execFile;
+var amqp = require('amqp');
+var fs = require('fs');
+var util = require('util');
+var path = require('path');
 
 debug = false;
 if (process.env['UR_DEBUG']) {
@@ -40,8 +40,8 @@ function setupPingQueue () {
   var pq = connection.queue(queueName);
 
   pq.addListener('open', function (messageCount, consumerCount) {
-    pq.subscribeJSON({ ack: true }, function (msg) {
-      sys.log("Received ping message");
+    pq.subscribe({ ack: true }, function (msg, headers, deliveryInfo) {
+      console.log("Received ping message");
       var client_id = msg.client_id;
       var id = msg.id;
 
@@ -56,22 +56,22 @@ function setupPingQueue () {
           + nodeUUID;
 
 
-      sys.log("Publishing ping reply to " + routingKey);
+      console.log("Publishing ping reply to " + routingKey);
       exchange.publish(routingKey, msg);
 
       pq.shift();
     });
-  });
 
-  pq.bind
-    ( 'amq.topic'
-    , resource + '.ping.' + nodeUUID
-    );
+    pq.bind
+      ( 'amq.topic'
+      , resource + '.ping.' + nodeUUID
+      );
+  });
 }
 
 function connect () {
   if (connecting || connected) {
-    sys.log("Was going to connect, but noticed we are connecting or already connected.");
+    console.log("Was going to connect, but noticed we are connecting or already connected.");
     return;
   }
   connecting = true;
@@ -124,7 +124,7 @@ function connect () {
 
   connection.on('error', function (e) {
     connecting = false;
-    sys.log('AMQP connection error: ' + e.message);
+    console.log('AMQP connection error: ' + e.message);
   });
 
   connection.on('close', function (e) {
@@ -193,7 +193,7 @@ function bindQueue () {
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '-' + adminMac + '.*');
     queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
     queue.bind('amq.topic', 'ur.broadcast.*.*');
-    queue.subscribeJSON({ ack: true }, onExecute);
+    queue.subscribe({ ack: true }, onExecute);
 
     var urStartupFilePath = '/tmp/.ur-startup';
     path.exists(urStartupFilePath, function (exists) {
@@ -213,13 +213,13 @@ function bindQueue () {
   });
 }
 
-function onExecute (m) {
-  console.log("Received a message to routing key: " + m._routingKey);
+function onExecute (m, headers, deliveryInfo) {
+  console.log("Received a message to routing key: " + deliveryInfo.routingKey);
   dump(m);
   queue.shift();
 
   // Save the request id so we can reference it in the reply's routing key.
-  var key = m._routingKey.split('.', 4);
+  var key = deliveryInfo.routingKey.split('.', 4);
   var reqID = key[3];
 
   if (key[1] == 'broadcast') {
@@ -426,7 +426,7 @@ function genId() {
 };
 
 function dump(obj, depth) {
-  console.log(sys.inspect(obj, true, depth ? depth : 20));    
+  console.log(util.inspect(obj, true, depth ? depth : 20));    
 }
 
 function pjoin () {
