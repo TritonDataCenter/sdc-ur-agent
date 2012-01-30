@@ -75,7 +75,8 @@ function connect () {
     return;
   }
   connecting = true;
-  console.log("Connecting");
+  console.log("Connecting to AMQP...");
+  console.dir(creds);
 
   connection = amqp.createConnection(creds);
 
@@ -128,8 +129,10 @@ function connect () {
   });
 
   connection.on('close', function (e) {
+    console.log("Connection close");
     connecting = false;
     connected = false;
+    clearInterval(reconnectionInterval);
     switch (connection.readyState) {
       case 'opening':
         if (reconnectionInterval || !e)
