@@ -25,6 +25,7 @@ var queue;
 var sysinfo;
 var connecting, connected;
 var adminMac;
+var heartbeatSeconds = 30;
 
 var connection;
 var reconnectionInterval;
@@ -75,6 +76,7 @@ function connect () {
     return;
   }
   connecting = true;
+  creds.heartbeat = heartbeatSeconds;
   console.log("Connecting to AMQP...");
   console.dir(creds);
 
@@ -88,13 +90,13 @@ function connect () {
     reconnectionInterval = undefined;
     console.log("AMQP Ready");
 
-    var nopMsgInterval = setInterval(publishNOP, 30000);
-    function publishNOP() {
+    var heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
+    function publishHeartbeat() {
       if (!connected) {
-        clearInterval(nopMsgInterval);
+        clearInterval(heartbeatInterval);
         return;
       }
-      exchange.publish('ur._nop.' + nodeUUID, {});
+      connection.heartbeat();
     }
 
     // Grab the sysinfo and publish a startup message indicating we've come
