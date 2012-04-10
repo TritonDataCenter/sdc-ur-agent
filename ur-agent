@@ -29,6 +29,7 @@ var heartbeatSeconds = 30;
 
 var connection;
 var reconnectionInterval;
+var reconnectTimeout;
 
 var reconnectAttempts = 0;
 var maxReconnectAttempts = 3;
@@ -71,7 +72,7 @@ function setupPingQueue () {
 }
 
 function connect () {
-  if (connecting || connected) {
+  if (!reconnectTimeout && (connecting || connected)) {
     console.log("Was going to connect, but noticed we are connecting or already connected.");
     return;
   }
@@ -80,10 +81,19 @@ function connect () {
   console.log("Connecting to AMQP...");
   console.dir(creds);
 
-  connection = amqp.createConnection(creds);
+  connection = new amqp.Connection();
+  connection.setOptions(creds);
+  
+  reconnectTimeout = setTimeout(function () {
+    console.log("Timed out waiting for ready event");
+    connection.end();
+    connection.reconnect();
+  }, 5000);
 
   // Wait until connection is made.
   connection.on('ready', function (e) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
     connecting = false;
     connected = true;
     reconnectionInterval && clearInterval(reconnectionInterval);
@@ -131,6 +141,8 @@ function connect () {
   });
 
   connection.on('close', function (e) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
     console.log("Connection close");
     connecting = false;
     connected = false;
@@ -146,6 +158,8 @@ function connect () {
         break;
     }
   });
+
+  connection.reconnect();
 }
 
 function firstAdminMac () {
