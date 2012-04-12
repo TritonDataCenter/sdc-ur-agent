@@ -37,6 +37,7 @@ install:
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-exchange.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-queue.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/jspack.js
 
 clean:
 	/bin/true
