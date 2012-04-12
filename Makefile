@@ -28,11 +28,11 @@ install:
 	$(INSTALL) -m 0555 $(INSTALL_FLAG) $(DESTROOT) $(ROOT)/ur-agent
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT) $(ROOT)/README
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/LICENSE-MIT
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp-0.8.xml
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp-0-9-1.xml
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/README.md
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/package.json
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/qparser.rb
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp-definitions-0-8.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/amqp-definitions-0-9-1.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/promise.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-exchange.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp $(ROOT)/amqp/util/delete-queue.js
