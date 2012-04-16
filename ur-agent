@@ -216,13 +216,13 @@ function bindQueue () {
   });
 }
 
-function onExecute (m) {
-  console.log("Received a message to routing key: " + m._routingKey);
+function onExecute (m, headers, deliveryInfo) {
+  console.log("Received a message to routing key: " + deliveryInfo.routingKey);
   dump(m);
   queue.shift();
 
   // Save the request id so we can reference it in the reply's routing key.
-  var key = m._routingKey.split('.', 4);
+  var key = deliveryInfo.routingKey.split('.', 4);
   var reqID = key[3];
 
   if (key[1] == 'broadcast') {
