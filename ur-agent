@@ -1,7 +1,7 @@
 #!/usr/node/bin/node
 
 var execFile = require('child_process').execFile;
-var amqp = require('amqp');
+var amqp = require('./amqp-plus');
 var fs = require('fs');
 var util = require('util');
 var path = require('path');
@@ -28,8 +28,6 @@ var adminMac;
 var heartbeatSeconds = 30;
 
 var connection;
-var reconnectionInterval;
-var reconnectTimeout;
 
 var reconnectAttempts = 0;
 var maxReconnectAttempts = 3;
@@ -71,94 +69,46 @@ function setupPingQueue () {
   });
 }
 
-function connect () {
-  if (!reconnectTimeout && (connecting || connected)) {
-    console.log("Was going to connect, but noticed we are connecting or already connected.");
-    return;
+function onReady() {
+  var heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
+  function publishHeartbeat() {
+    if (!connected) {
+      clearInterval(heartbeatInterval);
+      return;
+    }
+    connection.heartbeat();
   }
-  connecting = true;
+
+  // Grab the sysinfo and publish a startup message indicating we've come
+  // online and are ready to receive requests.
+  loadSysinfo(function (error, exitStatus, stdout, stderr) {
+    if (error) {
+      console.log("sysinfo error: " + stderr.toString());
+      dump(arguments);
+      return;
+    }
+
+    // output of sysinfo is a JSON object
+    sysinfo = JSON.parse(stdout);
+
+    // Use the UUID param to uniquely identify this machine on AMQP.
+    nodeUUID = sysinfo['UUID'];
+    if (!nodeUUID) {
+      throw new Error("Could not find 'UUID' in `sysinfo` output.");
+    }
+
+    // Open the exchange where we will publish outbound messages.
+    exchange = connection.exchange('amq.topic', { type: 'topic' });
+
+    adminMac = firstAdminMac();
+    bindQueue();
+  });
+}
+
+function connect() {
   creds.heartbeat = heartbeatSeconds;
-  console.log("Connecting to AMQP...");
-  console.dir(creds);
-
-  connection = new amqp.Connection();
-  connection.setOptions(creds);
-  
-  reconnectTimeout = setTimeout(function () {
-    console.log("Timed out waiting for ready event");
-    connection.end();
-    connection.reconnect();
-  }, 5000);
-
-  // Wait until connection is made.
-  connection.on('ready', function (e) {
-    clearTimeout(reconnectTimeout);
-    reconnectTimeout = null;
-    connecting = false;
-    connected = true;
-    reconnectionInterval && clearInterval(reconnectionInterval);
-    reconnectionInterval = undefined;
-    console.log("AMQP Ready");
-
-    var heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
-    function publishHeartbeat() {
-      if (!connected) {
-        clearInterval(heartbeatInterval);
-        return;
-      }
-      connection.heartbeat();
-    }
-
-    // Grab the sysinfo and publish a startup message indicating we've come
-    // online and are ready to receive requests.
-    loadSysinfo(function (error, exitStatus, stdout, stderr) {
-      if (error) {
-        console.log("sysinfo error: " + stderr.toString());
-        dump(arguments);
-        return;
-      }
-
-      // output of sysinfo is a JSON object
-      sysinfo = JSON.parse(stdout);
-
-      // Use the UUID param to uniquely identify this machine on AMQP.
-      nodeUUID = sysinfo['UUID'];
-      if (!nodeUUID) {
-        throw new Error("Could not find 'UUID' in `sysinfo` output.");
-      }
-
-      // Open the exchange where we will publish outbound messages.
-      exchange = connection.exchange('amq.topic', { type: 'topic' });
-
-      adminMac = firstAdminMac();
-      bindQueue();
-    });
-  });
-
-  connection.on('error', function (e) {
-    connecting = false;
-    console.log('AMQP connection error: ' + e.message);
-  });
-
-  connection.on('close', function (e) {
-    clearTimeout(reconnectTimeout);
-    reconnectTimeout = null;
-    console.log("Connection close");
-    connecting = false;
-    connected = false;
-    clearInterval(reconnectionInterval);
-    switch (connection.readyState) {
-      case 'opening':
-        if (reconnectionInterval || !e)
-          break;
-      case 'closed':
-        reconnectionInterval = setInterval(function () {
-          connect();
-        }, 5000);
-        break;
-    }
-  });
-
+  connection = new amqp.Connection(creds, { log: console });
+  connection.on('ready', onReady);
   connection.reconnect();
 }
 
@@ -202,7 +152,6 @@ function bindQueue () {
 
     setTimeout(function () {
       connection.end();
-      connect();
     }, 5000);
   });
 
@@ -215,7 +164,7 @@ function bindQueue () {
     queue.subscribe({ ack: true }, onExecute);
 
     var urStartupFilePath = '/tmp/.ur-startup';
-    path.exists(urStartupFilePath, function (exists) {
+    fs.exists(urStartupFilePath, function (exists) {
       if (!exists) {
         fs.writeFile(urStartupFilePath, "", function (error) {
           if (error)

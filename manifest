@@ -15,3 +15,4 @@ f smartdc/node_modules/amqp/qparser.rb 0444 root bin
 d smartdc/ur-agent 0755 root bin
 f smartdc/ur-agent/README 0444 root bin
 f smartdc/ur-agent/ur-agent 0555 root bin
+f smartdc/ur-agent/amqp-plus.js 0444 root bin
