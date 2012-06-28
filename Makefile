@@ -31,8 +31,8 @@ install:
 	mkdir -p $(DESTROOT)/ur-agent
 	mkdir -p $(DESTROOT)/node_modules/amqp/util
 	$(INSTALL) -m 0555 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/ur-agent
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/amqp-plus.js $(ROOT)/amqp-plus.js
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/README $(ROOT)/README
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/amqp-plus.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/README
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/LICENSE-MIT
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/amqp-0-9-1.xml
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/amqp-definitions-0-9-1.js
