@@ -9,20 +9,19 @@ var bunyan = require('bunyan');
 
 var debug = false;
 if (process.env['UR_DEBUG']) {
-  debug = true;
+    debug = true;
 }
 
-var urlog = bunyan.createLogger({name: "ur"});
-var joblog = bunyan.createLogger({name: "job"});
+var urlog = bunyan.createLogger({name: 'ur'});
+var joblog = bunyan.createLogger({name: 'job'});
 
-
-var creds
-  = { host:     process.env['AMQP_HOST']      || 'localhost'
-    , port:     process.env['AMQP_PORT']      || 5672
-    , login:    process.env['AMQP_LOGIN']     || 'guest'
-    , password: process.env['AMQP_PASSWORD']  || 'guest'
-    , vhost:    process.env['AMQP_VHOST']     || '/'
-    };
+var creds = {
+    host: process.env['AMQP_HOST'] || 'localhost',
+    port: process.env['AMQP_PORT'] || 5672,
+    login: process.env['AMQP_LOGIN'] || 'guest',
+    password: process.env['AMQP_PASSWORD'] || 'guest',
+    vhost: process.env['AMQP_VHOST'] || '/'
+};
 
 var nodeUUID;
 var exchange;
@@ -39,375 +38,375 @@ var maxReconnectAttempts = 3;
 
 connect();
 
-function setupPingQueue () {
-  var resource = 'ur';
-  var queueName = resource + '.ping.' + nodeUUID;
-  var pq = connection.queue(queueName);
+function setupPingQueue() {
+    var resource = 'ur';
+    var queueName = resource + '.ping.' + nodeUUID;
+    var pq = connection.queue(queueName);
 
-  pq.addListener('open', function (messageCount, consumerCount) {
-    pq.subscribe({ ack: true }, function (msg, headers, deliveryInfo) {
-      urlog.info("Received ping message");
-      var client_id = msg.client_id;
-      var id = msg.id;
+    pq.addListener('open', function (messageCount, consumerCount) {
+        pq.subscribe({ ack: true }, function (msg, headers, deliveryInfo) {
+            urlog.info('Received ping message');
+            var client_id = msg.client_id;
+            var id = msg.id;
 
-      var reply = { req_id: id
-                  , timestamp: new Date().toISOString()
-                  };
-      var routingKey
-        = resource
-          + '.ack'
-          + client_id
-          + '.'
-          + nodeUUID;
+            var reply = {
+                req_id: id,
+                timestamp: new Date().toISOString()
+            };
+            var routingKey = resource + '.ack' + client_id + '.' + nodeUUID;
 
 
-      urlog.info("Publishing ping reply to " + routingKey);
-      exchange.publish(routingKey, reply);
+            urlog.info('Publishing ping reply to ' + routingKey);
+            exchange.publish(routingKey, reply);
 
-      pq.shift();
+            pq.shift();
+        });
+
+        pq.bind(
+            'amq.topic',
+            resource + '.ping.' + nodeUUID);
     });
-
-    pq.bind
-      ( 'amq.topic'
-      , resource + '.ping.' + nodeUUID
-      );
-  });
 }
 
 var heartbeatInterval;
 function onReady() {
-  connection.heartbeat();
-  heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
-  function publishHeartbeat() {
     connection.heartbeat();
-  }
-
-  // Grab the sysinfo and publish a startup message indicating we've come
-  // online and are ready to receive requests.
-  loadSysinfo(function (error, exitStatus, stdout, stderr) {
-    if (error) {
-      urlog.error("sysinfo error: " + stderr.toString());
-      dump(arguments);
-      return;
+    heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
+    function publishHeartbeat() {
+        connection.heartbeat();
     }
 
-    // output of sysinfo is a JSON object
-    sysinfo = JSON.parse(stdout);
+    // Grab the sysinfo and publish a startup message indicating we've come
+    // online and are ready to receive requests.
+    loadSysinfo(function (error, exitStatus, stdout, stderr) {
+        if (error) {
+            urlog.error('sysinfo error: ' + stderr.toString());
+            dump(arguments);
+            return;
+        }
 
-    // Use the UUID param to uniquely identify this machine on AMQP.
-    nodeUUID = sysinfo['UUID'];
-    if (!nodeUUID) {
-      throw new Error("Could not find 'UUID' in `sysinfo` output.");
-    }
+        // output of sysinfo is a JSON object
+        sysinfo = JSON.parse(stdout);
 
-    // Open the exchange where we will publish outbound messages.
-    exchange = connection.exchange('amq.topic', { type: 'topic' });
+        // Use the UUID param to uniquely identify this machine on AMQP.
+        nodeUUID = sysinfo['UUID'];
+        if (!nodeUUID) {
+            throw new Error('Could not find "UUID" in `sysinfo` output.');
+        }
 
-    adminMac = firstAdminMac();
-    bindQueue();
-  });
+        // Open the exchange where we will publish outbound messages.
+        exchange = connection.exchange('amq.topic', { type: 'topic' });
+
+        adminMac = firstAdminMac();
+        bindQueue();
+    });
 }
 
 function connect() {
-  creds.heartbeat = heartbeatSeconds;
-  connection = new amqp.Connection(creds, { log: urlog });
-  connection.on('ready', onReady);
-  connection.on('end', function () {
-    clearInterval(heartbeatInterval);
-  });
-  connection.reconnect();
-}
-
-function firstAdminMac () {
-  var interfaces = sysinfo["Network Interfaces"];
-  var mac;
-  for (var iface in interfaces) {
-    if (!interfaces.hasOwnProperty(iface)) continue;
-
-    var nic = interfaces[iface]["NIC Names"];
-    var isAdmin = nic.indexOf('admin') !== -1;
-    if (isAdmin) {
-      mac = interfaces[iface]['MAC Address'];
-      return mac;
-    }
-  }
-
-  throw "No NICs with name 'admin' detected.";
-}
-
-function bindQueue () {
-  queue = connection.queue('ur.request.'+nodeUUID+'.'+adminMac, { exclusive: true });
-  
-  queue.on('error', function (e) {
-    var AMQP_RESOURCE_LOCKED = 405;
-
-    if (e.code !== AMQP_RESOURCE_LOCKED) {
-      urlog.error("AMQP Queue Error received: " + e.message);
-      return;
-    }
-
-    if (++reconnectAttempts > maxReconnectAttempts) {
-      urlog.error("Could not acquire exclusive ur queue after "
-                  + reconnectAttempts + " attempts.");
-      process.exit(1);
-    }
-
-    urlog.error('Detected another client our the Ur queue (Attempt: '
-                + [reconnectAttempts, maxReconnectAttempts].join('/') + ")");
-    exchange.publish(pjoin('ur.execute', nodeUUID, genId()), {});
-
-    setTimeout(function () {
-      connection.end();
-    }, 5000);
-  });
-
-  queue.on('open', function () {
-    reconnectAttempts = 0;
-    setupPingQueue();
-    queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '-' + adminMac + '.*');
-    queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
-    queue.bind('amq.topic', 'ur.broadcast.*.*');
-    queue.subscribe({ ack: true }, onExecute);
-
-    var urStartupFilePath = '/tmp/.ur-startup';
-    fs.exists(urStartupFilePath, function (exists) {
-      if (!exists) {
-        fs.writeFile(urStartupFilePath, "", function (error) {
-          if (error)
-            throw error;
-
-          // Open the exchange where we will publish outbound messages.
-          var routingKey = 'ur.startup.' + nodeUUID;
-          urlog.info('Sending startup message to routing key ' + routingKey);
-          dump(sysinfo);
-          exchange.publish(routingKey, sysinfo);
-        });
-      }
+    creds.heartbeat = heartbeatSeconds;
+    connection = new amqp.Connection(creds, { log: urlog });
+    connection.on('ready', onReady);
+    connection.on('end', function () {
+        clearInterval(heartbeatInterval);
     });
-  });
+    connection.reconnect();
 }
 
-function onExecute (m, headers, deliveryInfo) {
-  dump(m);
-  queue.shift();
+function firstAdminMac() {
+    var interfaces = sysinfo['Network Interfaces'];
+    var mac;
+    for (var iface in interfaces) {
+        if (!interfaces.hasOwnProperty(iface)) continue;
 
-  // Save the request id so we can reference it in the reply's routing key.
-  var key = deliveryInfo.routingKey.split('.', 4);
-  var reqID = key[3];
-  urlog.info({ req_id: reqID }, 'Received a message to routing key: ' + deliveryInfo.routingKey);
-
-  if (key[1] == 'broadcast') {
-    switch (key[2]) {
-      case 'sysinfo':
-        loadSysinfo(function (error, exitStatus, stdout, stderr) {
-          if (error) {
-            urlog.error({ req_id: reqID}, "broadcast sysinfo error: " + stderr.toString());
-            return;
-          }
-          publishBroadcastReply(reqID, JSON.parse(stdout));
-        });
-        break;
-      default:
-        urlog.info({ req_id: reqID}, "unknown broadcast key '" + key[2] + "'");
-        break;
+        var nic = interfaces[iface]['NIC Names'];
+        var isAdmin = nic.indexOf('admin') !== -1;
+        if (isAdmin) {
+            mac = interfaces[iface]['MAC Address'];
+            return mac;
+        }
     }
 
-    return;
-  }
+    throw new Error('No NICs with name "admin" detected.');
+}
 
-  switch (m.type) {
-    case 'file':
-      executeFile
-        ( m.file
-        , m.env
-        , m.args
-        , replyFn
-        );
-      break;
-  
-    case 'script':
-      executeScript
-        ( m.script
-        , m.env
-        , m.args
-        , replyFn
-        );
-      break;
-    default:
-      urlog.warn('Unknown message type: %s', m.type);
-      break;
-  }
+function bindQueue() {
+    queue = connection.queue(
+        'ur.request.'+nodeUUID+'.'+adminMac, { exclusive: true });
 
-  function replyFn(exitStatus, stdout, stderr) {
-    // An exit status of 113 from the executable indicates that we want the
-    // machine to reboot after we reply.
-    publishExecuteReply
-      ( reqID
-      , exitStatus === 113 ? 0 : exitStatus
-      , stdout
-      , stderr
-      , function () {
-          // Reboot if the exit status code is 113. 113 or 1/13 is the 30th
-          // prime number and also an "Einstein Prime".
-          if (exitStatus !== 113) {
+    queue.on('error', function (e) {
+        var AMQP_RESOURCE_LOCKED = 405;
+
+        if (e.code !== AMQP_RESOURCE_LOCKED) {
+            urlog.error('AMQP Queue Error received: ' + e.message);
             return;
-          }
-
-          // Allow some time for node gnomes to carry our reply AMQP packets
-          // away before we reboot the machine.
-          setTimeout(function () {
-            connection.end();
-            (debug ? fakeReboot : reboot)();
-          }, 1000);
         }
-      );
-  }
+
+        if (++reconnectAttempts > maxReconnectAttempts) {
+            urlog.error('Could not acquire exclusive ur queue after '
+            + reconnectAttempts + ' attempts.');
+            process.exit(1);
+        }
+
+        urlog.error('Detected another client our the Ur queue (Attempt: '
+            + [reconnectAttempts, maxReconnectAttempts].join('/') + ')');
+            exchange.publish(pjoin('ur.execute', nodeUUID, genId()), {});
+
+            setTimeout(function () {
+                connection.end();
+            }, 5000);
+    });
+
+    queue.on('open', function () {
+        reconnectAttempts = 0;
+        setupPingQueue();
+        queue.bind(
+            'amq.topic', 'ur.execute.' + nodeUUID + '-' + adminMac + '.*');
+        queue.bind('amq.topic', 'ur.execute.' + nodeUUID + '.*');
+        queue.bind('amq.topic', 'ur.broadcast.*.*');
+        queue.subscribe({ ack: true }, onExecute);
+
+        var urStartupFilePath = '/tmp/.ur-startup';
+        fs.exists(urStartupFilePath, function (exists) {
+            if (!exists) {
+                fs.writeFile(urStartupFilePath, '', function (error) {
+                    if (error)
+                        throw error;
+
+                    // Open the exchange for publishing outbound messages.
+                    var routingKey = 'ur.startup.' + nodeUUID;
+                    urlog.info('Sending startup message to routing key '
+                        + routingKey);
+                    dump(sysinfo);
+                    exchange.publish(routingKey, sysinfo);
+                });
+            }
+        });
+    });
+}
+
+function onExecute(m, headers, deliveryInfo) {
+    dump(m);
+    queue.shift();
+
+    // Save the request id so we can reference it in the reply's routing key.
+    var key = deliveryInfo.routingKey.split('.', 4);
+    var reqID = key[3];
+    urlog.info(
+        { req_id: reqID },
+        'Received a message to routing key: ' + deliveryInfo.routingKey);
+
+    if (key[1] == 'broadcast') {
+        switch (key[2]) {
+            case 'sysinfo':
+                loadSysinfo(function (error, exitStatus, stdout, stderr) {
+                    if (error) {
+                        urlog.error(
+                            { req_id: reqID},
+                            'broadcast sysinfo error: ' + stderr.toString());
+                        return;
+                    }
+                    publishBroadcastReply(reqID, JSON.parse(stdout));
+                });
+                break;
+            default:
+                urlog.info(
+                    { req_id: reqID}, 'unknown broadcast key "%s"',
+                    key[2]);
+                break;
+        }
+
+        return;
+    }
+
+    switch (m.type) {
+        case 'file':
+            executeFile(
+                m.file,
+                m.env,
+                m.args,
+                replyFn);
+
+            break;
+
+        case 'script':
+            executeScript(
+                m.script,
+                m.env,
+                m.args,
+                replyFn);
+
+            break;
+
+        default:
+            urlog.warn('Unknown message type: %s', m.type);
+            break;
+    }
+
+    function replyFn(exitStatus, stdout, stderr) {
+        // An exit status of 113 from the executable indicates that we want the
+        // machine to reboot after we reply.
+        var publishExitStatus = exitStatus === 113 ? 0 : exitStatus;
+        publishExecuteReply(
+            reqID,
+            publishExitStatus,
+            stdout,
+            stderr,
+            function () {
+                // Reboot if the exit status code is 113. 113 or 1/13 is the
+                // 30th prime number and also an "Einstein Prime".
+                if (exitStatus !== 113) {
+                    return;
+                }
+
+                // Allow some time for node gnomes to carry our reply AMQP
+                // packets away before we reboot the machine.
+                setTimeout(function () {
+                    connection.end();
+                    if (debug) {
+                        fakeReboot();
+                    } else {
+                        reboot();
+                    }
+                }, 1000);
+            });
+    }
 }
 
 function reboot() {
-  execFile
-    ( '/usr/sbin/shutdown'
-    , ['-y', '-g', '0', '-i', '6']
-    , function (error, stdout, stderr) {
-        if (error) {
-          throw new Error(stderr.toString());
-        }
-        setTimeout(function () {
-          forceReboot();
-        }, 
-        5*60*1000);
-      }
-    );
+    execFile(
+        '/usr/sbin/shutdown',
+        ['-y', '-g', '0', '-i', '6'],
+        function (error, stdout, stderr) {
+            if (error) {
+                throw new Error(stderr.toString());
+            }
+            setTimeout(function () {
+                forceReboot();
+            }, 5*60*1000);
+        });
 }
 
-function forceReboot () {
-  execFile
-    ( '/usr/sbin/reboot'
-    , []
-    , function () {
-        // Wait for reboot
-      }
-    );
+function forceReboot() {
+    execFile(
+        '/usr/sbin/reboot',
+        [],
+        function () {
+                // Wait for reboot
+        });
 }
 
 function fakeReboot() {
-  urlog.info("I am so rebooting right now.");
-  process.exit(0);
+    urlog.info('I am so rebooting right now.');
+    process.exit(0);
 }
 
 // Execute a file and then call callback with captured output and exit status
 // code.
 function executeFile(filename, env, args, callback) {
-  urlog.info("Executing file: " + filename);
-  execFile
-    ( filename
-    , args || []
-    , env ? { env: env } : {}
-    , function (error, stdout, stderr) {
-        if (error) {
-          callback(error.code, stdout.toString(), stderr.toString());
-          return;
-        }
-        stdout = stdout.toString();
-        stderr = stderr.toString();
+    urlog.info('Executing file: ' + filename);
+    execFile(
+        filename,
+        args || [],
+        env ? { env: env } : {},
+        function (error, stdout, stderr) {
+            if (error) {
+                callback(error.code, stdout.toString(), stderr.toString());
+                return;
+            }
+            stdout = stdout.toString();
+            stderr = stderr.toString();
 
-        urlog.info("Exit status for " + filename + " was " + (error ? error.code : 0));
-        urlog.info("STDOUT:");
-        urlog.info(stdout);
-        urlog.info("STDERR:");
-        urlog.info(stderr);
+            urlog.info('Exit status for %s was.',
+                filename, error ? error.code : 0);
+            urlog.info('STDOUT:');
+            urlog.info(stdout);
+            urlog.info('STDERR:');
+            urlog.info(stderr);
 
-        callback(0, stdout, stderr);
-      }
-    );
+            callback(0, stdout, stderr);
+        });
 }
 
 // Execute a script string.
 function executeScript(script, env, args, callback) {
-  urlog.info("Executing script: " + script);
-  var filename = tmpFilename();
-  urlog.info("Writing file " + filename);
+    urlog.info('Executing script: ' + script);
+    var filename = tmpFilename();
+    urlog.info('Writing file ' + filename);
 
-  // Write file, 'chmod 700' it, run it, delete file.
-  fs.writeFile(filename, script, function () {
-    fs.chmod(filename, parseInt('0700', 8), function () {
-      executeFile(filename, env, args, function () {
-        var execArgs = arguments;
-        fs.unlink(filename, function () {
-          callback.apply(undefined, execArgs);
+    // Write file, 'chmod 700' it, run it, delete file.
+    fs.writeFile(filename, script, function () {
+        fs.chmod(filename, parseInt('0700', 8), function () {
+            executeFile(filename, env, args, function () {
+                var execArgs = arguments;
+                fs.unlink(filename, function () {
+                    callback.apply(undefined, execArgs);
+                });
+            });
         });
-      });
     });
-  });
 }
 
 // Publish an 'ur.execute-reply'-type message to AMQP.
 function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
-  var reply = { exit_status: exitStatus
-              , stdout:      stdout
-              , stderr:      stderr
-              };
-  var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
-  urlog.info("Publishing execute-reply to request " + reqID + ":");
-  dump(reply);
+    var reply = {
+        exit_status: exitStatus,
+        stdout:      stdout,
+        stderr:      stderr
+    };
+    var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
+    urlog.info('Publishing execute-reply to request ' + reqID + ':');
+    dump(reply);
 
-  exchange.publish
-    ( routingKey
-    , reply
-    );
-  callback();
+    exchange.publish(routingKey, reply);
+    callback();
 }
 
 function publishBroadcastReply(reqID, reply) {
-  var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
-  urlog.info("Publishing execute-reply to broadcast request " + reqID + ":");
-  dump(reply);
+    var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
+    urlog.info('Publishing execute-reply to broadcast request ' + reqID + ':');
+    dump(reply);
 
-  exchange.publish
-    ( routingKey
-    , reply
-    );
+    exchange.publish(
+        routingKey,
+        reply);
 }
 
 // Quick and dirty generation of tmp filenames.
 function tmpFilename() {
-  return "/tmp/ur-" + genId();
+    return '/tmp/ur-' + genId();
 }
 
 // Run the sysinfo script and return the captured stdout, stderr, and exit
 // status code.
-function loadSysinfo (callback) {
-  var paramsExecutable
-    = debug ? './sysinfo-fake.sh' : '/usr/bin/sysinfo';
+function loadSysinfo(callback) {
+    var paramsExecutable = debug ? './sysinfo-fake.sh' : '/usr/bin/sysinfo';
 
-  execFile
-    ( paramsExecutable
-    , []
-    , function (exitStatus, stdout, stderr) {
-        if (exitStatus) {
-          callback(new Error(stderr), exitStatus, stdout, stderr);
-          return;
-        }
-       
-        callback
-          ( undefined
-          , exitStatus
-          , stdout.toString().trim()
-          , stderr.toString().trim()
-          );
-      }
-    );
-} 
+    execFile(
+        paramsExecutable,
+        [],
+        function (exitStatus, stdout, stderr) {
+            if (exitStatus) {
+                callback(new Error(stderr), exitStatus, stdout, stderr);
+                return;
+            }
+
+            callback(
+                undefined,
+                exitStatus,
+                stdout.toString().trim(),
+                stderr.toString().trim());
+        });
+}
 
 // Generate a hex representation of a random four byte string.
 function genId() {
-  return Math.floor(Math.random() * 0xffffffff).toString(16);
+    return Math.floor(Math.random() * 0xffffffff).toString(16);
 }
 
 function dump(obj, depth) {
-  urlog.info(util.inspect(obj, true, depth ? depth : 20));
+    urlog.info(util.inspect(obj, true, depth ? depth : 20));
 }
 
-function pjoin () {
-  return Array.prototype.join.call(arguments, '.');
+function pjoin() {
+    return Array.prototype.join.call(arguments, '.');
 }
