@@ -5,11 +5,16 @@ var amqp = require('./amqp-plus');
 var fs = require('fs');
 var util = require('util');
 var path = require('path');
+var bunyan = require('bunyan');
 
 debug = false;
 if (process.env['UR_DEBUG']) {
   debug = true;
 }
+
+var urlog = bunyan.createLogger({name: "ur"});
+var joblog = bunyan.createLogger({name: "job"});
+
 
 var creds
   = { host:     process.env['AMQP_HOST']      || 'localhost'
@@ -23,7 +28,7 @@ var nodeUUID;
 var exchange;
 var queue;
 var sysinfo;
-var connecting, connected;
+var connecting;
 var adminMac;
 var heartbeatSeconds = 30;
 
@@ -41,7 +46,7 @@ function setupPingQueue () {
 
   pq.addListener('open', function (messageCount, consumerCount) {
     pq.subscribe({ ack: true }, function (msg, headers, deliveryInfo) {
-      console.log("Received ping message");
+      urlog.info("Received ping message");
       var client_id = msg.client_id;
       var id = msg.id;
 
@@ -56,7 +61,7 @@ function setupPingQueue () {
           + nodeUUID;
 
 
-      console.log("Publishing ping reply to " + routingKey);
+      urlog.info("Publishing ping reply to " + routingKey);
       exchange.publish(routingKey, msg);
 
       pq.shift();
@@ -69,13 +74,11 @@ function setupPingQueue () {
   });
 }
 
+var heartbeatInterval;
 function onReady() {
-  var heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
+  connection.heartbeat();
+  heartbeatInterval = setInterval(publishHeartbeat, heartbeatSeconds * 1000);
   function publishHeartbeat() {
-    if (!connected) {
-      clearInterval(heartbeatInterval);
-      return;
-    }
     connection.heartbeat();
   }
 
@@ -83,7 +86,7 @@ function onReady() {
   // online and are ready to receive requests.
   loadSysinfo(function (error, exitStatus, stdout, stderr) {
     if (error) {
-      console.log("sysinfo error: " + stderr.toString());
+      urlog.error("sysinfo error: " + stderr.toString());
       dump(arguments);
       return;
     }
@@ -107,8 +110,11 @@ function onReady() {
 
 function connect() {
   creds.heartbeat = heartbeatSeconds;
-  connection = new amqp.Connection(creds, { log: console });
+  connection = new amqp.Connection(creds, { log: urlog });
   connection.on('ready', onReady);
+  connection.on('end', function () {
+    clearInterval(heartbeatInterval);
+  });
   connection.reconnect();
 }
 
@@ -136,19 +142,19 @@ function bindQueue () {
     var AMQP_RESOURCE_LOCKED = 405;
 
     if (e.code !== 405) {
-      console.error("AMQP Queue Error received: " + e.message);
+      urlog.error("AMQP Queue Error received: " + e.message);
       return;
     }
 
     if (++reconnectAttempts > maxReconnectAttempts) {
-      console.log("Could not acquire exclusive ur queue after "
+      urlog.error("Could not acquire exclusive ur queue after "
                   + reconnectAttempts + " attempts.")
       process.exit(1);
     }
 
-    console.log("Detected another client our the Ur queue (Attempt: "
+    urlog.error('Detected another client our the Ur queue (Attempt: '
                 + [reconnectAttempts, maxReconnectAttempts].join('/') + ")");
-    exchange.publish(pjoin("ur.execute", nodeUUID, genId()), {});
+    exchange.publish(pjoin('ur.execute', nodeUUID, genId()), {});
 
     setTimeout(function () {
       connection.end();
@@ -172,7 +178,7 @@ function bindQueue () {
 
           // Open the exchange where we will publish outbound messages.
           var routingKey = 'ur.startup.' + nodeUUID;
-          console.log("Sending startup message to routing key " + routingKey);
+          urlog.info('Sending startup message to routing key ' + routingKey);
           dump(sysinfo);
           exchange.publish(routingKey, sysinfo);
         });
@@ -182,20 +188,20 @@ function bindQueue () {
 }
 
 function onExecute (m, headers, deliveryInfo) {
-  console.log("Received a message to routing key: " + deliveryInfo.routingKey);
   dump(m);
   queue.shift();
 
   // Save the request id so we can reference it in the reply's routing key.
   var key = deliveryInfo.routingKey.split('.', 4);
   var reqID = key[3];
+  urlog.info({ req_id: reqID }, 'Received a message to routing key: ' + deliveryInfo.routingKey);
 
   if (key[1] == 'broadcast') {
     switch (key[2]) {
       case 'sysinfo': {
         loadSysinfo(function (error, exitStatus, stdout, stderr) {
           if (error) {
-            console.log("broadcast sysinfo error: " + stderr.toString());
+            urlog.error({ req_id: reqID}, "broadcast sysinfo error: " + stderr.toString());
             return;
           }
           publishBroadcastReply(reqID, JSON.parse(stdout));
@@ -204,7 +210,7 @@ function onExecute (m, headers, deliveryInfo) {
       }
     }
 
-    console.log("unknown broadcast key '" + key[2] + "'");
+    urlog.info({ req_id: reqID}, "unknown broadcast key '" + key[2] + "'");
     return;
   }
 
@@ -281,14 +287,14 @@ function forceReboot () {
 }
 
 function fakeReboot() {
-  console.log("I am so rebooting right now.");
+  urlog.info("I am so rebooting right now.");
   process.exit(0);
 }
 
 // Execute a file and then call callback with captured output and exit status
 // code.
 function executeFile(filename, env, args, callback) {
-  console.log("Executing file: " + filename);
+  urlog.info("Executing file: " + filename);
   execFile
     ( filename
     , args || []
@@ -301,11 +307,11 @@ function executeFile(filename, env, args, callback) {
         stdout = stdout.toString();
         stderr = stderr.toString();
 
-        console.log("Exit status for " + filename + " was " + (error ? error.code : 0));
-        console.log("STDOUT:");
-        console.log(stdout);
-        console.log("STDERR:");
-        console.log(stderr);
+        urlog.info("Exit status for " + filename + " was " + (error ? error.code : 0));
+        urlog.info("STDOUT:");
+        urlog.info(stdout);
+        urlog.info("STDERR:");
+        urlog.info(stderr);
 
         callback(0, stdout, stderr);
       }
@@ -314,9 +320,9 @@ function executeFile(filename, env, args, callback) {
 
 // Execute a script string.
 function executeScript(script, env, args, callback) {
-  console.log("Executing script: " + script);
+  urlog.info("Executing script: " + script);
   var filename = tmpFilename();
-  console.log("Writing file " + filename);
+  urlog.info("Writing file " + filename);
 
   // Write file, 'chmod 700' it, run it, delete file.
   fs.writeFile(filename, script, function () {
@@ -338,7 +344,7 @@ function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
               , stderr:      stderr
               };
   var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
-  console.log("Publishing execute-reply to request " + reqID + ":");
+  urlog.info("Publishing execute-reply to request " + reqID + ":");
   dump(reply);
 
   exchange.publish
@@ -350,7 +356,7 @@ function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
 
 function publishBroadcastReply(reqID, reply) {
   var routingKey = 'ur.execute-reply.' + nodeUUID + '.' + reqID;
-  console.log("Publishing execute-reply to broadcast request " + reqID + ":");
+  urlog.info("Publishing execute-reply to broadcast request " + reqID + ":");
   dump(reply);
 
   exchange.publish
@@ -394,11 +400,9 @@ function genId() {
 };
 
 function dump(obj, depth) {
-  console.log(util.inspect(obj, true, depth ? depth : 20));    
+  urlog.info(util.inspect(obj, true, depth ? depth : 20));
 }
 
 function pjoin () {
   return Array.prototype.join.call(arguments, '.');
 }
-
-// vim:ft=javascript
