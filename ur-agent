@@ -7,7 +7,7 @@ var util = require('util');
 var path = require('path');
 var bunyan = require('bunyan');
 
-debug = false;
+var debug = false;
 if (process.env['UR_DEBUG']) {
   debug = true;
 }
@@ -50,9 +50,9 @@ function setupPingQueue () {
       var client_id = msg.client_id;
       var id = msg.id;
 
-      var msg = { req_id: id
-                , timestamp: new Date().toISOString()
-                };
+      var reply = { req_id: id
+                  , timestamp: new Date().toISOString()
+                  };
       var routingKey
         = resource
           + '.ack'
@@ -62,7 +62,7 @@ function setupPingQueue () {
 
 
       urlog.info("Publishing ping reply to " + routingKey);
-      exchange.publish(routingKey, msg);
+      exchange.publish(routingKey, reply);
 
       pq.shift();
     });
@@ -121,13 +121,13 @@ function connect() {
 function firstAdminMac () {
   var interfaces = sysinfo["Network Interfaces"];
   var mac;
-  for (interface in interfaces) {
-    if (!interfaces.hasOwnProperty(interface)) continue;
+  for (var iface in interfaces) {
+    if (!interfaces.hasOwnProperty(iface)) continue;
 
-    var nic = interfaces[interface]["NIC Names"];
+    var nic = interfaces[iface]["NIC Names"];
     var isAdmin = nic.indexOf('admin') !== -1;
     if (isAdmin) {
-      mac = interfaces[interface]['MAC Address'];
+      mac = interfaces[iface]['MAC Address'];
       return mac;
     }
   }
@@ -141,14 +141,14 @@ function bindQueue () {
   queue.on('error', function (e) {
     var AMQP_RESOURCE_LOCKED = 405;
 
-    if (e.code !== 405) {
+    if (e.code !== AMQP_RESOURCE_LOCKED) {
       urlog.error("AMQP Queue Error received: " + e.message);
       return;
     }
 
     if (++reconnectAttempts > maxReconnectAttempts) {
       urlog.error("Could not acquire exclusive ur queue after "
-                  + reconnectAttempts + " attempts.")
+                  + reconnectAttempts + " attempts.");
       process.exit(1);
     }
 
@@ -198,7 +198,7 @@ function onExecute (m, headers, deliveryInfo) {
 
   if (key[1] == 'broadcast') {
     switch (key[2]) {
-      case 'sysinfo': {
+      case 'sysinfo':
         loadSysinfo(function (error, exitStatus, stdout, stderr) {
           if (error) {
             urlog.error({ req_id: reqID}, "broadcast sysinfo error: " + stderr.toString());
@@ -206,11 +206,12 @@ function onExecute (m, headers, deliveryInfo) {
           }
           publishBroadcastReply(reqID, JSON.parse(stdout));
         });
-        return;
-      }
+        break;
+      default:
+        urlog.info({ req_id: reqID}, "unknown broadcast key '" + key[2] + "'");
+        break;
     }
 
-    urlog.info({ req_id: reqID}, "unknown broadcast key '" + key[2] + "'");
     return;
   }
 
@@ -231,6 +232,9 @@ function onExecute (m, headers, deliveryInfo) {
         , m.args
         , replyFn
         );
+      break;
+    default:
+      urlog.warn('Unknown message type: %s', m.type);
       break;
   }
 
@@ -326,7 +330,7 @@ function executeScript(script, env, args, callback) {
 
   // Write file, 'chmod 700' it, run it, delete file.
   fs.writeFile(filename, script, function () {
-    fs.chmod(filename, 0700, function () {
+    fs.chmod(filename, parseInt('0700', 8), function () {
       executeFile(filename, env, args, function () {
         var execArgs = arguments;
         fs.unlink(filename, function () {
@@ -380,8 +384,10 @@ function loadSysinfo (callback) {
     ( paramsExecutable
     , []
     , function (exitStatus, stdout, stderr) {
-        if (exitStatus)
-          return callback(new Error(stderr), exitStatus, stdout, stderr);
+        if (exitStatus) {
+          callback(new Error(stderr), exitStatus, stdout, stderr);
+          return;
+        }
        
         callback
           ( undefined
@@ -389,7 +395,6 @@ function loadSysinfo (callback) {
           , stdout.toString().trim()
           , stderr.toString().trim()
           );
-        return;
       }
     );
 } 
@@ -397,7 +402,7 @@ function loadSysinfo (callback) {
 // Generate a hex representation of a random four byte string.
 function genId() {
   return Math.floor(Math.random() * 0xffffffff).toString(16);
-};
+}
 
 function dump(obj, depth) {
   urlog.info(util.inspect(obj, true, depth ? depth : 20));
