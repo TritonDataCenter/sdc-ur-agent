@@ -12,8 +12,8 @@ if (process.env['UR_DEBUG']) {
     debug = true;
 }
 
-var urlog = bunyan.createLogger({name: 'ur'});
-var joblog = bunyan.createLogger({name: 'job'});
+var urlog = bunyan.createLogger({name: 'ur', level: 'debug'});
+var joblog = bunyan.createLogger({name: 'job', level: 'debug'});
 
 var creds = {
     host: process.env['AMQP_HOST'] || 'localhost',
@@ -35,6 +35,7 @@ var connection;
 
 var reconnectAttempts = 0;
 var maxReconnectAttempts = 3;
+var broadcastSetupStateInterval;
 
 connect();
 
@@ -68,6 +69,82 @@ function setupPingQueue() {
     });
 }
 
+var setupStateFile = '/var/lib/setup.json';
+
+function readSetupStateFile(callback) {
+    fs.readFile(setupStateFile, function (error, data) {
+        if (error) {
+            urlog.error(
+                'Error reading file %s: %s', setupStateFile, error.message);
+            callback(error);
+            return;
+        }
+
+        var setupState;
+
+        try {
+            setupState = JSON.parse(data.toString());
+        }
+        catch (e) {
+            urlog.error(
+                'could not parse %s: %s', setupStateFile, error.message);
+            callback(error);
+            return;
+        }
+
+        callback(null, setupState);
+        return;
+    });
+}
+
+function setupStateChecker() {
+    clearInterval(broadcastSetupStateInterval);
+    broadcastSetupStateInterval = null;
+
+    function publish() {
+        loadSysinfo(function (err, exitStatus, stdout, stderr) {
+            if (err) {
+                urlog.error('sysinfo error: ' + stderr.toString());
+                dump(arguments);
+                return;
+            }
+            sysinfo = JSON.parse(stdout);
+            exchange.publish(
+                pjoin('ur.sysinfo', nodeUUID, genId()), sysinfo);
+        });
+    }
+
+    function check() {
+        fs.exists(setupStateFile, function (exists) {
+            if (!exists) {
+                publish();
+                return;
+            }
+
+            readSetupStateFile(function (error, setupState) {
+                if (setupState.complete === true) {
+                    urlog.debug('Server is setup!');
+                    clearInterval(broadcastSetupStateInterval);
+                    broadcastSetupStateInterval = null;
+                    return;
+                }
+
+                if (!broadcastSetupStateInterval) {
+                    urlog.debug(
+                        'Server isn\'t set up, initiating polling');
+                    broadcastSetupStateInterval
+                        = setInterval(function () {
+                            check();
+                        }, 60000);
+                }
+                publish();
+            });
+        });
+    }
+
+    check();
+}
+
 var heartbeatInterval;
 function onReady() {
     connection.heartbeat();
@@ -96,6 +173,7 @@ function onReady() {
 
         // Open the exchange where we will publish outbound messages.
         exchange = connection.exchange('amq.topic', { type: 'topic' });
+        setupStateChecker();
 
         adminMac = firstAdminMac();
         bindQueue();
@@ -128,6 +206,7 @@ function firstAdminMac() {
 
     throw new Error('No NICs with name "admin" detected.');
 }
+
 
 function bindQueue() {
     queue = connection.queue(
@@ -336,9 +415,14 @@ function executeScript(script, env, args, callback) {
     // Write file, 'chmod 700' it, run it, delete file.
     fs.writeFile(filename, script, function () {
         fs.chmod(filename, parseInt('0700', 8), function () {
-            executeFile(filename, env, args, function () {
-                var execArgs = arguments;
-                fs.unlink(filename, function () {
+            executeFile(filename, env, args, function (error, stdout, stderr) {
+                urlog.info('Execute complete (%s)', filename);
+                var execArgs = Array.prototype.slice.apply(arguments);
+                fs.unlink(filename, function (ulerror) {
+                    if (ulerror) {
+                        urlog.info('Error unlinking file (%s)', filename);
+                    }
+
                     callback.apply(undefined, execArgs);
                 });
             });
