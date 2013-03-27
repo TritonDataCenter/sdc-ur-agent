@@ -117,6 +117,14 @@ function setupStateChecker() {
     function check() {
         fs.exists(setupStateFile, function (exists) {
             if (!exists) {
+                if (!broadcastSetupStateInterval) {
+                    urlog.debug(
+                        'Server isn\'t set up, initiating polling');
+                    broadcastSetupStateInterval
+                        = setInterval(function () {
+                            check();
+                        }, 60000);
+                }
                 publish();
                 return;
             }
