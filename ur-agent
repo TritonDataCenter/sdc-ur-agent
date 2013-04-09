@@ -101,6 +101,8 @@ function setupStateChecker() {
     clearInterval(broadcastSetupStateInterval);
     broadcastSetupStateInterval = null;
 
+    check();
+
     function publish() {
         loadSysinfo(function (err, exitStatus, stdout, stderr) {
             if (err) {
@@ -134,6 +136,7 @@ function setupStateChecker() {
                     urlog.debug('Server is setup!');
                     clearInterval(broadcastSetupStateInterval);
                     broadcastSetupStateInterval = null;
+                    publish();
                     return;
                 }
 
@@ -149,8 +152,6 @@ function setupStateChecker() {
             });
         });
     }
-
-    check();
 }
 
 var heartbeatInterval;
