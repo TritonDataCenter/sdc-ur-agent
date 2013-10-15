@@ -1,4 +1,4 @@
-#!/usr/node/bin/node
+#!/usr/node/bin/node --abort_on_uncaught_exception
 
 var execFile = require('child_process').execFile;
 var amqp = require('./amqp-plus');
