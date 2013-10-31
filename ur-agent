@@ -23,6 +23,7 @@ var creds = {
     vhost: process.env['AMQP_VHOST'] || '/'
 };
 
+var MAX_BUFFER = 5 * 1024 * 1024;
 var nodeUUID;
 var exchange;
 var queue;
@@ -395,10 +396,10 @@ function executeFile(filename, env, args, callback) {
     execFile(
         filename,
         args || [],
-        env ? { env: env } : {},
+        env ? { env: env, maxBuffer: MAX_BUFFER } : { maxBuffer: MAX_BUFFER },
         function (error, stdout, stderr) {
             if (error) {
-                callback(error.code, stdout.toString(), stderr.toString());
+                callback(error, stdout.toString(), stderr.toString());
                 return;
             }
             stdout = stdout.toString();
@@ -440,7 +441,18 @@ function executeScript(script, env, args, callback) {
 }
 
 // Publish an 'ur.execute-reply'-type message to AMQP.
-function publishExecuteReply(reqID, exitStatus, stdout, stderr, callback) {
+function publishExecuteReply(reqID, error, stdout, stderr, callback) {
+    var exitStatus = 0;
+
+    if (error) {
+        if (error.code) {
+            exitStatus = error.code;
+        } else {
+            exitStatus = 1;
+            stderr = error.message;
+        }
+    }
+
     var reply = {
         exit_status: exitStatus,
         stdout:      stdout,
