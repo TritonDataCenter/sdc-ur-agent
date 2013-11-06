@@ -331,13 +331,14 @@ function onExecute(m, headers, deliveryInfo) {
             break;
     }
 
-    function replyFn(exitStatus, stdout, stderr) {
+    function replyFn(error, stdout, stderr) {
         // An exit status of 113 from the executable indicates that we want the
         // machine to reboot after we reply.
-        var publishExitStatus = exitStatus === 113 ? 0 : exitStatus;
+        var exitStatus = error.code;
+        var publishExitStatus = error.code === 113 || error.code === undefined ? 0 : error.code;
         publishExecuteReply(
             reqID,
-            publishExitStatus,
+            { code: publishExitStatus },
             stdout,
             stderr,
             function () {
@@ -443,9 +444,10 @@ function executeScript(script, env, args, callback) {
 // Publish an 'ur.execute-reply'-type message to AMQP.
 function publishExecuteReply(reqID, error, stdout, stderr, callback) {
     var exitStatus = 0;
+    urlog.info({ err: error }, "publishExecuteReply return");
 
     if (error) {
-        if (error.code) {
+        if (error.code === 0 || error.code) {
             exitStatus = error.code;
         } else {
             exitStatus = 1;
