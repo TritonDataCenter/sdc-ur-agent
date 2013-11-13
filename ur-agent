@@ -483,26 +483,56 @@ function tmpFilename() {
     return '/tmp/ur-' + genId();
 }
 
+function getZonename(callback) {
+    var filename = '/usr/bin/zonename';
+
+    execFile(filename, [], function (err, stdout, stderr) {
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        callback(stdout.replace('\n', ''));
+    });
+}
+
 // Run the sysinfo script and return the captured stdout, stderr, and exit
 // status code.
 function loadSysinfo(callback) {
     var paramsExecutable = debug ? './sysinfo-fake.sh' : '/usr/bin/sysinfo';
+    var sysinfo_file;
 
-    execFile(
-        paramsExecutable,
-        [],
-        function (exitStatus, stdout, stderr) {
-            if (exitStatus) {
-                callback(new Error(stderr), exitStatus, stdout, stderr);
-                return;
-            }
+    getZonename(function (zonename) {
 
-            callback(
-                undefined,
-                exitStatus,
-                stdout.toString().trim(),
-                stderr.toString().trim());
-        });
+        if (zonename === "global") {
+            execFile(
+                paramsExecutable,
+                [],
+                function (exitStatus, stdout, stderr) {
+                    if (exitStatus) {
+                        callback(new Error(stderr), exitStatus, stdout, stderr);
+                        return;
+                    }
+
+                    callback(
+                        undefined,
+                        exitStatus,
+                        stdout.toString().trim(),
+                        stderr.toString().trim());
+                }
+            );
+        } else {
+            sysinfo_file = '/mockcn/' + zonename + '/sysinfo.json';
+            fs.readFile(sysinfo_file, function (error, data) {
+                if (error) {
+                    callback(error, 1, '', error.message);
+                    return;
+                }
+
+                callback(null, 0, data, '');
+            });
+        }
+    });
 }
 
 // Generate a hex representation of a random four byte string.
