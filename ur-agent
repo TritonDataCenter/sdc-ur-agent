@@ -399,7 +399,7 @@ function executeFile(filename, env, args, callback) {
 
     new_env = env;
     if (!new_env) {
-        new_env = {};
+        new_env = process.env;
     }
 
     if (process.env['MOCKCN_SERVER_UUID']) {
