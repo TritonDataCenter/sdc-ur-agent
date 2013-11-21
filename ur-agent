@@ -1,4 +1,14 @@
 #!/usr/node/bin/node --abort_on_uncaught_exception
+/*
+ * The Ur agent is an AMQP client that connects to the rabbitmq zone(s) running
+ * in the DC and waits for commands. It is used for bootstrapping and initial
+ * setup of the stack and is also used for running automated commands on some or
+ * all CNs in a give DC.
+ *
+ * At startup Ur sends the output from /usr/bin/sysinfo in order to identify
+ * itself to CNAPI.
+ *
+ */
 
 var amqp = require('./amqp-plus');
 var bunyan = require('bunyan');
@@ -10,7 +20,6 @@ var util = require('util');
 /* Global Variables (shared by all Ur connection instances) */
 
 var debug = process.env['UR_DEBUG'] ? true : false;
-var globalUr;
 var heartbeatSeconds = 30;
 var maxReconnectAttempts = 3;
 var MAX_BUFFER = 5 * 1024 * 1024;
@@ -24,34 +33,43 @@ function UrAgent(options) {
     self.urStartupFilePath = '/tmp/.ur-startup';
     self.mockCNServerUUID = null;
 
-    self.creds = {
-        host: process.env['AMQP_HOST'] || 'localhost',
-        port: process.env['AMQP_PORT'] || 5672,
-        login: process.env['AMQP_LOGIN'] || 'guest',
-        password: process.env['AMQP_PASSWORD'] || 'guest',
-        vhost: process.env['AMQP_VHOST'] || '/'
-    };
+    // init gets run on creation of each new instance.
+    (function init () {
+         // Load data into self from env + passed options
+         applyOptions();
 
-    if (self.options.hasOwnProperty('sysinfoFile')) {
-        self.sysinfoFile = self.options.sysinfoFile;
-    }
-    if (self.options.hasOwnProperty('setupStateFile')) {
-        self.setupStateFile = self.options.setupStateFile;
-    }
-    if (self.options.hasOwnProperty('urStartupFilePath')) {
-        self.urStartupFilePath = self.options.urStartupFilePath;
-    }
-    if (self.options.hasOwnProperty('mockCNServerUUID')) {
-        self.mockCNServerUUID = self.options.mockCNServerUUID;
-    }
+         /*
+          * Connect NOW!
+          */
+         connect();
+    })();
 
-    self.log = self.options.log
-        || bunyan.createLogger({name: 'ur', level: 'debug'});
+    function applyOptions() {
 
-    /*
-     * Connect NOW!
-     */
-    connect();
+        self.creds = {
+            host: process.env['AMQP_HOST'] || 'localhost',
+            port: process.env['AMQP_PORT'] || 5672,
+            login: process.env['AMQP_LOGIN'] || 'guest',
+            password: process.env['AMQP_PASSWORD'] || 'guest',
+            vhost: process.env['AMQP_VHOST'] || '/'
+        };
+
+        if (self.options.hasOwnProperty('sysinfoFile')) {
+            self.sysinfoFile = self.options.sysinfoFile;
+        }
+        if (self.options.hasOwnProperty('setupStateFile')) {
+            self.setupStateFile = self.options.setupStateFile;
+        }
+        if (self.options.hasOwnProperty('urStartupFilePath')) {
+            self.urStartupFilePath = self.options.urStartupFilePath;
+        }
+        if (self.options.hasOwnProperty('mockCNServerUUID')) {
+            self.mockCNServerUUID = self.options.mockCNServerUUID;
+        }
+
+        self.log = self.options.log
+            || bunyan.createLogger({name: 'ur', level: 'debug'});
+    }
 
     function setupPingQueue() {
         var pq;
@@ -537,11 +555,6 @@ function UrAgent(options) {
         );
     }
 
-    // Quick and dirty generation of tmp filenames.
-    function tmpFilename() {
-        return '/tmp/ur-' + genId();
-    }
-
     // Run the sysinfo script and return the captured stdout, stderr, and exit
     // status code.
     function loadSysinfo(callback) {
@@ -575,6 +588,11 @@ function UrAgent(options) {
         }
     }
 
+    // Quick and dirty generation of tmp filenames.
+    function tmpFilename() {
+        return '/tmp/ur-' + genId();
+    }
+
     // Generate a hex representation of a random four byte string.
     function genId() {
         return Math.floor(Math.random() * 0xffffffff).toString(16);
@@ -589,6 +607,12 @@ function UrAgent(options) {
     }
 }
 
+/*
+ * UrAgent.shutdown() is used to stop a running UrAgent instance. It cleans up
+ * the queue and exchange and closes the connection. At that point the instance
+ * is ready to be destroyed.
+ *
+ */
 UrAgent.prototype.shutdown = function () {
     var self = this;
 
@@ -622,7 +646,8 @@ UrAgent.prototype.shutdown = function () {
  * is being run directly.
  */
 var main = function () {
-    globalUr = new UrAgent();
+    // this creates a new UrAgent and starts it.
+    new UrAgent();
 };
 
 if (require.main === module) {
