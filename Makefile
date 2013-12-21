@@ -5,6 +5,12 @@
 DESTROOT=$(DESTDIR)/smartdc
 ROOT=$(PWD)
 UNAME=$(shell uname -s)
+JSSTYLE = $(ROOT)/deps/jsstyle/jsstyle
+JSLINT_DIR = $(ROOT)/deps/javascriptlint
+JSLINT = $(JSLINT_DIR)/build/install/jsl
+JSSTYLE_OPTS = -o indent=4,strict-indent=1,doxygen,unparenthesized-return=0,continuation-at-front=1,leading-right-paren-ok=1
+JS_CHECK_TARGETS=\
+    ur-agent
 
 ifeq ($(UNAME),Linux)
     INSTALL=/usr/bin/install
@@ -48,5 +54,21 @@ install:
 
 clean:
 	/bin/true
+
+check: $(JSLINT)
+	@printf "\n==> Running JavaScriptLint...\n"
+	@$(JSLINT) --nologo --conf=$(ROOT)/etc/jsl.node.conf \
+		$(JS_CHECK_TARGETS)
+	@printf "\n==> Running jsstyle...\n"
+	@# jsstyle doesn't echo as it goes so we add an echo to each line below
+	(for file in $(JS_CHECK_TARGETS); do \
+    echo $(PWD)/$$file; \
+    $(JSSTYLE) $(JSSTYLE_OPTS) $$file; \
+    [[ $$? == "0" ]] || exit 1; \
+done)
+	@printf "\nJS style ok!\n"
+
+$(JSLINT): submodules
+	(cd $(JSLINT_DIR); make CC=gcc install)
 
 .PHONY: manifest
