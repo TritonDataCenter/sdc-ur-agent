@@ -272,9 +272,12 @@ function UrAgent(options) {
 
         self.queue.on('error', function (e) {
             var AMQP_RESOURCE_LOCKED = 405;
+            var AMQP_ACCESS_REFUSED = 403;
 
-            if (e.code !== AMQP_RESOURCE_LOCKED) {
-                self.log.error('AMQP Queue Error received: ' + e.message);
+            if (e.code !== AMQP_RESOURCE_LOCKED
+                || e.code !== AMQP_ACCESS_REFUSED)
+            {
+                self.log.error('AMQP Queue Error received (retrying): ' + e.message);
                 return;
             }
 
