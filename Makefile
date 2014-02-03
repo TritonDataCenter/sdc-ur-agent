@@ -36,19 +36,40 @@ install:
 	rm -rf $(DESTROOT)/ur-agent
 	mkdir -p $(DESTROOT)/ur-agent
 	mkdir -p $(DESTROOT)/node_modules/amqp/util
+	mkdir -p $(DESTROOT)/node_modules/amqp/lib
+	mkdir -p $(DESTROOT)/node_modules/amqp/node_modules/lodash/dist
+	mkdir -p $(DESTROOT)/node_modules/amqp/node_modules/longjohn/dist
 	$(INSTALL) -m 0555 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/ur-agent
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/amqp-plus.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/README
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/LICENSE-MIT
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/amqp-0-9-1.xml
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/amqp-definitions-0-9-1.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/amqp-0-9-1-rabbit.xml
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/amqp.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/History.md
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/jspack.js
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/README.md
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/LICENSE-MIT
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/package.json
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/qparser.rb
-	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/promise.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp $(ROOT)/node_modules/amqp/README.md
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/definitions.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/queue.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/debug.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/channel.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/amqp-definitions-0-9-1.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/constants.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/serializer.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/parser.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/promise.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/exchange.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/message.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/lib $(ROOT)/node_modules/amqp/lib/connection.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/lodash $(ROOT)/node_modules/amqp/node_modules/lodash/package.json
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/lodash $(ROOT)/node_modules/amqp/node_modules/lodash/README.md
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/lodash/dist $(ROOT)/node_modules/amqp/node_modules/lodash/dist/lodash.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/longjohn $(ROOT)/node_modules/amqp/node_modules/longjohn/LICENSE-MIT
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/longjohn $(ROOT)/node_modules/amqp/node_modules/longjohn/README.md
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/longjohn $(ROOT)/node_modules/amqp/node_modules/longjohn/package.json
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/longjohn/dist $(ROOT)/node_modules/amqp/node_modules/longjohn/dist/longjohn.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/util $(ROOT)/node_modules/amqp/util/delete-exchange.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/util $(ROOT)/node_modules/amqp/util/delete-queue.js
 

@@ -1,0 +1,4 @@
+node_modules/amqp/.jshintrc
+node_modules/amqp/.npmignore
+node_modules/amqp/.travis.yml
+node_modules/amqp/node_modules/longjohn/.npmignore

@@ -9,13 +9,16 @@ function Connection(connectionArgs, options) {
     if (options) {
         this.resource = options.resource;
         this.log = options.log;
+
+        this.attemptToReconnect
+            = typeof options.attemptToReconnect === 'undefined'
+                ? true : options.attemptToReconnect;
     }
 
     this.connected = false;
     this.connecting = false;
     this.reconnectionInterval = null;
     this.reconnectTimeout = null;
-
 
     self.on('ready', function () {
         self.connecting = false;
@@ -40,8 +43,14 @@ function Connection(connectionArgs, options) {
         self.connecting = false;
         self.connected = false;
 
+
         clearTimeout(self.reconnectTimeout);
         clearInterval(self.reconnectionInterval);
+
+        if (self.attemptToReconnect !== true) {
+            return;
+        }
+
         self.reconnectTimeout = null;
         self.reconnectionInterval = null;
 
