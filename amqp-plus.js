@@ -9,10 +9,6 @@ function Connection(connectionArgs, options) {
     if (options) {
         this.resource = options.resource;
         this.log = options.log;
-
-        this.attemptToReconnect
-            = typeof options.attemptToReconnect === 'undefined'
-                ? true : options.attemptToReconnect;
     }
 
     this.connected = false;
@@ -20,7 +16,9 @@ function Connection(connectionArgs, options) {
     this.reconnectionInterval = null;
     this.reconnectTimeout = null;
 
+
     self.on('ready', function () {
+        self.log.info('AMQP Ready');
         self.connecting = false;
         self.connected = true;
 
@@ -29,46 +27,37 @@ function Connection(connectionArgs, options) {
         self.reconnectTimeout = null;
         self.reconnectionInterval = null;
 
-        console.log('AMQP Ready');
     });
 
     self.on('error', function (e) {
         self.connecting = false;
-        self.log.error(e, 'AMQP connection error:');
-    });
-
-    self.on('close', function (e) {
-        var num = Math.floor(Math.random() * 1000);
-        self.log.info('AMQP Connection close %s', num);
-        self.connecting = false;
-        self.connected = false;
-
+        self.log.error(e, 'AMQP connection error');
 
         clearTimeout(self.reconnectTimeout);
         clearInterval(self.reconnectionInterval);
-
-        if (self.attemptToReconnect !== true) {
-            return;
-        }
-
         self.reconnectTimeout = null;
         self.reconnectionInterval = null;
 
-        switch (self.readyState) {
-            case 'opening':
-                if (self.reconnectionInterval || !e) {
-                    break;
-                }
-                break;
-            case 'closed':
-                self.reconnectionInterval = setInterval(function () {
-                    self.log.info('Forcing reconnect %s', num);
-                    self.reconnect();
-                }, 5000);
-                break;
-            default:
-                break;
-        }
+        self.reconnectionInterval = setInterval(function () {
+            self.log.info('forcing reconnect');
+            self.reconnect();
+        }, 5000);
+    });
+
+    self.on('close', function (e) {
+        self.log.info('AMQP Connection close');
+        self.connecting = false;
+        self.connected = false;
+
+        clearTimeout(self.reconnectTimeout);
+        clearInterval(self.reconnectionInterval);
+        self.reconnectTimeout = null;
+        self.reconnectionInterval = null;
+
+        self.reconnectionInterval = setInterval(function () {
+            self.log.info('Forcing reconnect');
+            self.reconnect();
+        }, 5000);
     });
 }
 
@@ -77,11 +66,10 @@ util.inherits(Connection, amqp.Connection);
 Connection.prototype.reconnect = function () {
     var self = this;
 
-    if (!self.reconnectTimeout && (self.connecting || self.connected)) {
-        self.log.info('Was going to connect, but noticed '
-            + 'we are connecting or already connected.');
-        return;
-    }
+    clearTimeout(self.reconnectTimeout);
+    clearInterval(self.reconnectionInterval);
+    self.reconnectTimeout = null;
+    self.reconnectionInterval = null;
 
     self.connecting = true;
     self.log.info('Connecting to AMQP');
@@ -97,6 +85,7 @@ Connection.prototype.reconnect = function () {
 
 function createConnection(connectionArgs, options) {
     var c = new Connection(connectionArgs, options);
+    c.connect();
 
     return c;
 }
