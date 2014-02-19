@@ -47,6 +47,7 @@ function UrAgent(options) {
     function applyOptions() {
 
         self.creds = {
+            heartbeat: heartbeatSeconds,
             host: process.env['AMQP_HOST'] || 'localhost',
             port: process.env['AMQP_PORT'] || 5672,
             login: process.env['AMQP_LOGIN'] || 'guest',
@@ -198,14 +199,6 @@ function UrAgent(options) {
     }
 
     function onReady() {
-        self.connection.heartbeat();
-        self.heartbeatInterval = setInterval(publishHeartbeat,
-            heartbeatSeconds * 1000);
-
-        function publishHeartbeat() {
-            self.connection.heartbeat();
-        }
-
         // Grab the sysinfo and publish a startup message indicating we've come
         // online and are ready to receive requests.
         loadSysinfo(function (error, exitStatus, stdout, stderr) {
@@ -238,9 +231,6 @@ function UrAgent(options) {
     {
         self.connection = new amqp.Connection(self.creds, { log: self.log });
         self.connection.on('ready', onReady);
-        self.connection.on('end', function () {
-            clearInterval(self.heartbeatInterval);
-        });
         self.connection.reconnect();
     }
 
@@ -277,7 +267,8 @@ function UrAgent(options) {
             if (e.code !== AMQP_RESOURCE_LOCKED
                 || e.code !== AMQP_ACCESS_REFUSED)
             {
-                self.log.error('AMQP Queue Error received (retrying): ' + e.message);
+                self.log.error('AMQP Queue Error received (retrying): '
+                    + e.message);
                 return;
             }
 
@@ -622,11 +613,6 @@ UrAgent.prototype.shutdown = function () {
     if (self.broadcastSetupStateInterval) {
         clearInterval(self.broadcastSetupStateInterval);
         self.broadcastSetupStateInterval = null;
-    }
-
-    if (self.heartbeatInterval) {
-        clearInterval(self.heartbeatInterval);
-        self.heartbeatInterval = null;
     }
 
     if (self.queue) {
