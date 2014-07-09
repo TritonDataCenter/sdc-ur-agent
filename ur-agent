@@ -230,7 +230,7 @@ function UrAgent(options) {
     function connect()
     {
         self.connection = new amqp.Connection(self.creds, { log: self.log });
-        self.connection.on('ready', onReady);
+        self.connection.once('ready', onReady);
         self.connection.reconnect();
     }
 
@@ -264,8 +264,9 @@ function UrAgent(options) {
             var AMQP_RESOURCE_LOCKED = 405;
             var AMQP_ACCESS_REFUSED = 403;
 
+            // If error is not one of these, retry a few times.
             if (e.code !== AMQP_RESOURCE_LOCKED
-                || e.code !== AMQP_ACCESS_REFUSED)
+                && e.code !== AMQP_ACCESS_REFUSED)
             {
                 self.log.error('AMQP Queue Error received (retrying): '
                     + e.message);
@@ -280,9 +281,9 @@ function UrAgent(options) {
                 process.exit(1);
             }
 
-            self.log.error('Detected another client on the Ur queue (Attempt: '
-                + [self.reconnectAttempts, maxReconnectAttempts].join('/')
-                + ')');
+            self.log.error('Error: %s (Attempt: %s)',
+                e.message,
+                [self.reconnectAttempts, maxReconnectAttempts].join('/'));
 
             self.exchange.publish(pjoin('ur.execute', self.nodeUUID, genId()),
                 {});
