@@ -1,5 +1,15 @@
 #!/usr/node/bin/node --abort_on_uncaught_exception
 /*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * Copyright (c) 2014, Joyent, Inc.
+ */
+
+/*
  * The Ur agent is an AMQP client that connects to the rabbitmq zone(s) running
  * in the DC and waits for commands. It is used for bootstrapping and initial
  * setup of the stack and is also used for running automated commands on some or
