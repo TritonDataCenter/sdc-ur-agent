@@ -1,6 +1,3 @@
-[submodule "amqp"]
-	path = amqp
-	url = git://github.com/ry/node-amqp.git
 [submodule "deps/jsstyle"]
 	path = deps/jsstyle
 	url = git://github.com/davepacheco/jsstyle.git
