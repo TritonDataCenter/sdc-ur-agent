@@ -36,6 +36,6 @@ f smartdc/node_modules/amqp/node_modules/longjohn/package.json 0444 root bin
 d smartdc/node_modules/amqp/node_modules/longjohn/dist 0555 root bin
 f smartdc/node_modules/amqp/node_modules/longjohn/dist/longjohn.js 0444 root bin
 d smartdc/ur-agent 0755 root bin
-f smartdc/ur-agent/README 0444 root bin
+f smartdc/ur-agent/README.md 0444 root bin
 f smartdc/ur-agent/ur-agent 0555 root bin
 f smartdc/ur-agent/amqp-plus.js 0444 root bin
