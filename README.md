@@ -8,13 +8,11 @@
     Copyright (c) 2014, Joyent, Inc.
 -->
 
-# Ur Agent
+# sdc-ur-agent
 
-Repository: <git@github.com:joyent/sdc-ur-agent.git>
-Browsing: <https://mo.joyent.com/ur-agent>
-Who: Orlando Vazquez
-Docs: <https://mo.joyent.com/docs/ur-agent>
-Tickets/bugs: <https://devhub.joyent.com/jira/browse/AGENT>
+This repository is part of the Joyent SmartDataCenter project (SDC).  For
+contribution guidelines, issues, and general documentation, visit the main
+[SDC](http://github.com/joyent/sdc) project page.
 
 
 # Overview
@@ -118,6 +116,13 @@ On reply to an `execute` command:
     , stdout: "hello world\n";
     , stderr: ""
     }
+
+
+# Development
+
+    git clone git@github.com:joyent/sdc-ur-agent.git
+    cd sdc-ur-agent
+    git submodule update --init
 
 
 ## About Ur
