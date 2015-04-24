@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2014, Joyent, Inc.
+# Copyright 2015 Joyent, Inc.
 #
 
 DESTROOT=$(DESTDIR)/smartdc
@@ -36,6 +36,8 @@ update:
 
 manifest:
 	cp manifest $(DESTDIR)/$(DESTNAME)
+
+mancheck_conf:
 
 install:
 	rm -rf $(DESTROOT)/node_modules/amqp
@@ -98,4 +100,4 @@ done)
 $(JSLINT): submodules
 	(cd $(JSLINT_DIR); make CC=gcc install)
 
-.PHONY: manifest
+.PHONY: manifest mancheck_conf
