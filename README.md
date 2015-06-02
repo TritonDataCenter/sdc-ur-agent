@@ -51,8 +51,8 @@ Once it has started, the Ur agent will post a message to AMQP. This message is
 simply to indicate, "Hey\! I have started up and am ready to be told what to
 do". 
 
-At this point, the headnode will take note that this new node exists and willk
-now a little bit about its configuration. 
+At this point, the headnode will take note that this new node exists and will
+know a little bit about its configuration. 
 
 From this point on the headnode can use Ur for setting up the server, reading
 configuration etc.
