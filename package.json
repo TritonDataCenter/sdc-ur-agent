@@ -1,0 +1,13 @@
+{
+  "name": "sdc-ur-agent",
+  "description": "Ur",
+  "version": "1.0.0",
+  "author": "Joyent (joyent.com)",
+  "private": true,
+  "dependencies": {
+  },
+  "engines": {
+    "node": ">=0.10"
+  },
+  "license": "MPL-2.0"
+}
