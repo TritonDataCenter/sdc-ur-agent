@@ -3,6 +3,7 @@
   "description": "Ur",
   "version": "1.0.0",
   "author": "Joyent (joyent.com)",
+  "main": "./ur-agent",
   "private": true,
   "dependencies": {
   },
