@@ -11,6 +11,8 @@
 var amqp = require('amqp');
 var util = require('util');
 
+var RECONNECT_TIMEOUT = 30000;
+
 function Connection(connectionArgs, options) {
     var self = this;
 
@@ -49,9 +51,9 @@ function Connection(connectionArgs, options) {
         self.reconnectionInterval = null;
 
         self.reconnectionInterval = setInterval(function () {
-            self.log.info('forcing reconnect');
+            self.log.warn('forcing reconnect');
             self.reconnect();
-        }, 5000);
+        }, RECONNECT_TIMEOUT);
     });
 
     self.on('close', function (e) {
@@ -65,9 +67,9 @@ function Connection(connectionArgs, options) {
         self.reconnectionInterval = null;
 
         self.reconnectionInterval = setInterval(function () {
-            self.log.info('Forcing reconnect');
+            self.log.warn('forcing reconnect');
             self.reconnect();
-        }, 5000);
+        }, RECONNECT_TIMEOUT);
     });
 }
 
@@ -88,7 +90,7 @@ Connection.prototype.reconnect = function () {
         self.log.error('Timed-out waiting for AMQP ready event');
         self.end();
         amqp.Connection.prototype.reconnect.apply(self, arguments);
-    }, 4000);
+    }, RECONNECT_TIMEOUT);
 
     amqp.Connection.prototype.reconnect.apply(self, arguments);
 };
