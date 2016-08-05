@@ -5,22 +5,20 @@
 -->
 
 <!--
-    Copyright (c) 2014, Joyent, Inc.
+    Copyright (c) 2016, Joyent, Inc.
 -->
 
 # sdc-ur-agent
 
-This repository is part of the Joyent SmartDataCenter project (SDC).  For
-contribution guidelines, issues, and general documentation, visit the main
-[SDC](http://github.com/joyent/sdc) project page.
+This repository is part of the Joyent Triton project. See the [contribution
+guidelines](https://github.com/joyent/triton/blob/master/CONTRIBUTING.md) --
+*Triton does not use GitHub PRs* -- and general documentation at the main
+[Triton project](https://github.com/joyent/triton) page.
 
-
-# Overview
-
-When an SmartDataCenter server starts up, it will require a way of
-setting up the server, boot-strapping various sub-systems such as zpool
-creation, agents, etc, based on the configuration and role of the machine. The
-node agent Ur, will listen on AMQP for scripts to execute.
+When a Triton server starts up, it will require a way of setting up the
+server, boot-strapping various sub-systems such as zpool creation, agents,
+etc, based on the configuration and role of the machine. The node agent Ur
+will listen on AMQP for scripts to execute.
 
 It's important to note, however, that we will not be able to update the
 operating system live image, so the Ur agent must be reasonably future proof.
@@ -123,24 +121,3 @@ On reply to an `execute` command:
     git clone git@github.com:joyent/sdc-ur-agent.git
     cd sdc-ur-agent
     git submodule update --init
-
-
-## About Ur
-
-Desolate and Forsaken, Eerily Moaning Dark Winds
-Murmur Incantations, Dusk Calls Forth Shadows
-Spirits of the Glorious Dead Lingering, Bound to this Place
-They Whisper of Untold Sagas, of Long Dead Cities
-the Seven Shining Cities Sacred to the Aphkhallu
-of Ages Past when the World was Young
-When Babylon was Blessed of Marduk
-and the Sound of her Armies was the Blare of Ominous War Horns
-and the Clash of Immortal Cymbals
-of Bronze Gates Arrayed in Splendour
-and Magnificent Walls of Sunbaked Brick of Temples of Marble
-and Bloodstained Altars, Long Before the Jeweled Throne of Ur
-Fell Silent and Turned to Dust
-Beneath the Endless Shifting Sands
-and the Inevitable Vengeance of the Elements
-
--- Nile - To Dream of Ur
