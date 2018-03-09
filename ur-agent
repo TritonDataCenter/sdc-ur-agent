@@ -247,7 +247,11 @@ function UrAgent(options) {
     function firstAdminMac() {
         var interfaces;
         var mac;
+        var admin_tag = 'admin';
 
+        if (self.sysinfo['Admin NIC Tag']) {
+            admin_tag = self.sysinfo['Admin NIC Tag'];
+        }
         interfaces = self.sysinfo['Network Interfaces'];
 
         for (var iface in interfaces) {
@@ -256,7 +260,7 @@ function UrAgent(options) {
             }
 
             var nic = interfaces[iface]['NIC Names'];
-            var isAdmin = nic.indexOf('admin') !== -1;
+            var isAdmin = nic.indexOf(admin_tag) !== -1;
             if (isAdmin) {
                 mac = interfaces[iface]['MAC Address'];
                 return mac;
