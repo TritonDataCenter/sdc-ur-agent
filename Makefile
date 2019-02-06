@@ -41,12 +41,16 @@ mancheck_conf:
 
 install:
 	rm -rf $(DESTROOT)/node_modules/amqp
+	rm -rf $(DESTROOT)/node_modules/triton-netconfig
 	rm -rf $(DESTROOT)/ur-agent
 	mkdir -p $(DESTROOT)/ur-agent
 	mkdir -p $(DESTROOT)/node_modules/amqp/util
 	mkdir -p $(DESTROOT)/node_modules/amqp/lib
 	mkdir -p $(DESTROOT)/node_modules/amqp/node_modules/lodash/dist
 	mkdir -p $(DESTROOT)/node_modules/amqp/node_modules/longjohn/dist
+	mkdir -p $(DESTROOT)/node_modules/triton-netconfig/lib
+	mkdir -p $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/assert-plus
+	mkdir -p $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone
 	$(INSTALL) -m 0555 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/ur-agent
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/amqp-plus.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/ur-agent $(ROOT)/README.md
@@ -80,6 +84,17 @@ install:
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/node_modules/longjohn/dist $(ROOT)/node_modules/amqp/node_modules/longjohn/dist/longjohn.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/util $(ROOT)/node_modules/amqp/util/delete-exchange.js
 	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/amqp/util $(ROOT)/node_modules/amqp/util/delete-queue.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig $(ROOT)/node_modules/triton-netconfig/package.json
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig $(ROOT)/node_modules/triton-netconfig/LICENSE
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/lib $(ROOT)/node_modules/triton-netconfig/lib/index.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/LICENSE
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/ip6addr.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/package.json
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/assert-plus $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/assert-plus/assert.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/assert-plus $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/assert-plus/package.json
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone/LICENSE
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone/clone.js
+	$(INSTALL) -m 0444 $(INSTALL_FLAG) $(DESTROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone $(ROOT)/node_modules/triton-netconfig/node_modules/ip6addr/node_modules/clone/package.json
 
 clean:
 	/bin/true

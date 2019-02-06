@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (c) 2014, Joyent, Inc.
+ * Copyright (c) 2019, Joyent, Inc.
  */
 
 /*
@@ -24,6 +24,7 @@ var amqp = require('./amqp-plus');
 var bunyan = require('bunyan');
 var execFile = require('child_process').execFile;
 var fs = require('fs');
+var netconfig = require('triton-netconfig');
 var path = require('path');
 var util = require('util');
 
@@ -212,6 +213,8 @@ function UrAgent(options) {
         // Grab the sysinfo and publish a startup message indicating we've come
         // online and are ready to receive requests.
         loadSysinfo(function (error, exitStatus, stdout, stderr) {
+            var adminNic;
+
             if (error) {
                 self.log.error('sysinfo error: ' + stderr.toString());
                 dump(arguments);
@@ -232,7 +235,13 @@ function UrAgent(options) {
                 { type: 'topic' });
             setupStateChecker();
 
-            self.adminMac = firstAdminMac();
+            adminNic = netconfig.adminNicFromSysinfo(self.sysinfo);
+            if (!adminNic) {
+                throw new Error('No admin NIC detected.');
+            }
+
+            self.adminMac = adminNic['MAC Address'];
+
             bindQueue();
         });
     }
@@ -242,32 +251,6 @@ function UrAgent(options) {
         self.connection = new amqp.Connection(self.creds, { log: self.log });
         self.connection.once('ready', onReady);
         self.connection.reconnect();
-    }
-
-    function firstAdminMac() {
-        var interfaces;
-        var mac;
-        var admin_tag = 'admin';
-
-        if (self.sysinfo['Admin NIC Tag']) {
-            admin_tag = self.sysinfo['Admin NIC Tag'];
-        }
-        interfaces = self.sysinfo['Network Interfaces'];
-
-        for (var iface in interfaces) {
-            if (!interfaces.hasOwnProperty(iface)) {
-                continue;
-            }
-
-            var nic = interfaces[iface]['NIC Names'];
-            var isAdmin = nic.indexOf(admin_tag) !== -1;
-            if (isAdmin) {
-                mac = interfaces[iface]['MAC Address'];
-                return mac;
-            }
-        }
-
-        throw new Error('No NICs with name "admin" detected.');
     }
 
     function bindQueue() {
