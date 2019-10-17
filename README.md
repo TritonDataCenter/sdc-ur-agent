@@ -5,14 +5,14 @@
 -->
 
 <!--
-    Copyright (c) 2016, Joyent, Inc.
+    Copyright 2019 Joyent, Inc.
 -->
 
 # sdc-ur-agent
 
 This repository is part of the Joyent Triton project. See the [contribution
-guidelines](https://github.com/joyent/triton/blob/master/CONTRIBUTING.md) --
-*Triton does not use GitHub PRs* -- and general documentation at the main
+guidelines](https://github.com/joyent/triton/blob/master/CONTRIBUTING.md)
+and general documentation at the main
 [Triton project](https://github.com/joyent/triton) page.
 
 When a Triton server starts up, it will require a way of setting up the
@@ -47,10 +47,10 @@ code and the script's captured STDOUT and STDERR.
 When a compute node starts up, Ur will be one of the first processes running.
 Once it has started, the Ur agent will post a message to AMQP. This message is
 simply to indicate, "Hey\! I have started up and am ready to be told what to
-do". 
+do".
 
 At this point, the headnode will take note that this new node exists and will
-know a little bit about its configuration. 
+know a little bit about its configuration.
 
 From this point on the headnode can use Ur for setting up the server, reading
 configuration etc.
@@ -72,7 +72,7 @@ from the "/usr/bin/sysinfo" script.
 On start up, Ur will execute the sysinfo utility and publish a message to AMQP with this information.
 
     ==> routing-key: ur.startup.<node-id>
-    
+
     {
       "Live Image": "20140905T202142Z",
       "System Type": "SunOS",
