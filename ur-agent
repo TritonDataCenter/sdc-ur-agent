@@ -44,6 +44,10 @@ function UrAgent(options) {
     self.urStartupFilePath = '/tmp/.ur-startup';
     self.mockCNServerUUID = null;
 
+    if (process.platform === 'linux') {
+        self.setupStateFile = '/usr/triton/state/triton-setup.json';
+    }
+
     // init gets run on creation of each new instance.
     (function init() {
         // Load data into self from env + passed options
@@ -550,7 +554,7 @@ function UrAgent(options) {
     // Run the sysinfo script and return the captured stdout, stderr, and exit
     // status code.
     function loadSysinfo(callback) {
-        var paramsExecutable = debug ? './sysinfo-fake.sh' : '/usr/bin/sysinfo';
+        var paramsExecutable = debug ? './sysinfo-fake.sh' : 'sysinfo';
 
         if (self.sysinfoFile) {
             fs.readFile(self.sysinfoFile, function (error, data) {
