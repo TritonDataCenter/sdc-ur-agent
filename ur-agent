@@ -44,6 +44,9 @@ function UrAgent(options) {
     self.urStartupFilePath = '/tmp/.ur-startup';
     self.mockCNServerUUID = null;
 
+    self.log = self.options.log
+        || bunyan.createLogger({name: 'ur', level: 'debug'});
+
     if (process.platform === 'linux') {
         self.setupStateFile = '/usr/triton/state/triton-setup.json';
     }
@@ -51,23 +54,51 @@ function UrAgent(options) {
     // init gets run on creation of each new instance.
     (function init() {
         // Load data into self from env + passed options
-        applyOptions();
+        loadSysinfo(function (err, exitStatus, stdout, stderr) {
+            if (err) {
+                self.log.error('sysinfo error: ' + stderr.toString());
+                process.exit(1);
+                return;
+            }
+            self.sysinfo = JSON.parse(stdout);
 
-        /*
-         * Connect NOW!
-         */
-        connect();
+            applyOptions();
+
+            /*
+             * Connect NOW!
+             */
+            connect();
+        });
     })();
 
     function applyOptions() {
+        var host = 'localhost';
+        var port = 5672;
+        var username = 'guest';
+        var password = 'guest';
+        var vhost = '/';
+
+        var bootParams = self.sysinfo['Boot Params'];
+        var split;
+
+        if (bootParams && bootParams.rabbitmq) {
+            // Parse "rabbitmq" kernel boot parameter, example:
+            //   guest:guest:172.16.2.14:5672
+            split = bootParams.rabbitmq.split(':');
+
+            username = split[0];
+            password = split[1];
+            host = split[2];
+            port = split[3];
+        }
 
         self.creds = {
             heartbeat: heartbeatSeconds,
-            host: process.env['AMQP_HOST'] || 'localhost',
-            port: process.env['AMQP_PORT'] || 5672,
-            login: process.env['AMQP_LOGIN'] || 'guest',
-            password: process.env['AMQP_PASSWORD'] || 'guest',
-            vhost: process.env['AMQP_VHOST'] || '/'
+            host: process.env['AMQP_HOST'] || host,
+            port: process.env['AMQP_PORT'] || port,
+            login: process.env['AMQP_LOGIN'] || username,
+            password: process.env['AMQP_PASSWORD'] || password,
+            vhost: process.env['AMQP_VHOST'] || vhost
         };
 
         if (self.options.hasOwnProperty('sysinfoFile')) {
@@ -83,8 +114,6 @@ function UrAgent(options) {
             self.mockCNServerUUID = self.options.mockCNServerUUID;
         }
 
-        self.log = self.options.log
-            || bunyan.createLogger({name: 'ur', level: 'debug'});
     }
 
     function setupPingQueue() {
