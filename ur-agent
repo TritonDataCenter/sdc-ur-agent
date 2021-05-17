@@ -443,9 +443,19 @@ function UrAgent(options) {
     }
 
     function reboot() {
+        var shutdown_args;
+        switch (process.platform) {
+            case 'linux':
+                shutdown_args = ['now', '-r'];
+                break;
+            default:
+                /* sunos */
+                shutdown_args = ['-y', '-g', '0', '-i', '6'];
+                break;
+        }
         execFile(
             '/usr/sbin/shutdown',
-            ['-y', '-g', '0', '-i', '6'],
+            shutdown_args,
             function (error, stdout, stderr) {
                 if (error) {
                     throw new Error(stderr.toString());
